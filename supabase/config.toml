@@ -1,1 +1,7 @@
 project_id = "kuwrhanybqhfnwvshedl"
+
+[functions.api-countries]
+verify_jwt = false
+
+[functions.api-cmp-overview]
+verify_jwt = false

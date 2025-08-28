@@ -1,0 +1,7 @@
+{
+  "tasks": {},
+  "imports": {},
+  "deploy": {
+    "exclude": ["**/*.test.ts", "**/*.spec.ts"]
+  }
+}
