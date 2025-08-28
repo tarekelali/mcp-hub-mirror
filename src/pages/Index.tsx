@@ -1,10 +1,12 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { SegmentedControl } from "../../packages/ui/src/SegmentedControl";
 import { AppList } from "../components/AppList";
 import { AppMap } from "../components/AppMap";
 import { getCountries, getCountryCmps } from "../lib/api";
 
 export default function Home() {
+  const navigate = useNavigate();
   const [mode, setMode] = React.useState<"map" | "list">("list");
   const [countries, setCountries] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -26,7 +28,7 @@ export default function Home() {
       const res = await getCountryCmps(code);
       // Navigate to first CMP if available, otherwise show alert
       if (res.cmps.length > 0) {
-        window.location.href = `/cmp/${res.cmps[0].id}`;
+        navigate(`/cmp/${res.cmps[0].id}`);
       } else {
         alert(`${res.country}: No CMPs found`);
       }
