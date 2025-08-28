@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.post-ingest-refresh]
 verify_jwt = false
+
+[functions.api-cmp-files]
+verify_jwt = false

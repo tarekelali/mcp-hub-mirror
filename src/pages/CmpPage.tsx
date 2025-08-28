@@ -1,8 +1,8 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { Tabs } from "../../../packages/ui/src/Tabs";
-import { Modal } from "../../../packages/ui/src/Modal";
-import { getCmpOverview, getCmpSheets, getCmpContact } from "../../lib/cmp";
+import { Tabs } from "../../packages/ui/src/Tabs";
+import { Modal } from "../../packages/ui/src/Modal";
+import { getCmpOverview, getCmpSheets, getCmpContact } from "../lib/cmp";
 
 export default function CmpPage() {
   const { id = "" } = useParams();

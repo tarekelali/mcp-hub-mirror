@@ -24,7 +24,12 @@ export default function Home() {
   const openCountry = async (code: string) => {
     try {
       const res = await getCountryCmps(code);
-      alert(`${res.country}: ${res.cmps.length} CMPs (drawer coming next)`);
+      // Navigate to first CMP if available, otherwise show alert
+      if (res.cmps.length > 0) {
+        window.location.href = `/cmp/${res.cmps[0].id}`;
+      } else {
+        alert(`${res.country}: No CMPs found`);
+      }
     } catch (error) {
       console.error("Failed to load CMPs:", error);
       alert("Failed to load CMPs");
