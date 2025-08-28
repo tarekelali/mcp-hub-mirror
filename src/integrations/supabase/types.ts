@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "countries"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "cmps_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "mv_country_counts"
+            referencedColumns: ["code"]
+          },
         ]
       }
       contacts: {
@@ -348,10 +355,23 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mv_country_counts: {
+        Row: {
+          centroid: Json | null
+          code: string | null
+          name: string | null
+          published: number | null
+          total: number | null
+          unpublished: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      refresh_mv_country_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       level_kind: "marketHall" | "showroom"
