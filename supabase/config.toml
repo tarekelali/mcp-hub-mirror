@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.api-cmp-overview]
 verify_jwt = false
+
+[functions.api-viewer-sign]
+verify_jwt = false
+
+[functions.api-da-revit-job]
+verify_jwt = false
+
+[functions.webhooks-aps]
+verify_jwt = false
