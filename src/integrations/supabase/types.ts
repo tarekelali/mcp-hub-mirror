@@ -167,6 +167,10 @@ export type Database = {
           id: string
           name: string | null
           pct: number
+          urn_country: string | null
+          urn_crs: string | null
+          urn_current: string | null
+          urn_similar: string | null
         }
         Insert: {
           area_sqm: number
@@ -175,6 +179,10 @@ export type Database = {
           id?: string
           name?: string | null
           pct: number
+          urn_country?: string | null
+          urn_crs?: string | null
+          urn_current?: string | null
+          urn_similar?: string | null
         }
         Update: {
           area_sqm?: number
@@ -183,6 +191,10 @@ export type Database = {
           id?: string
           name?: string | null
           pct?: number
+          urn_country?: string | null
+          urn_crs?: string | null
+          urn_current?: string | null
+          urn_similar?: string | null
         }
         Relationships: [
           {

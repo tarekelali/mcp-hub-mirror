@@ -1,11 +1,12 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Tabs } from "../../packages/ui/src/Tabs";
 import { Modal } from "../../packages/ui/src/Modal";
 import { getCmpOverview, getCmpSheets, getCmpContact } from "../lib/cmp";
 
 export default function CmpPage() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const [tab, setTab] = React.useState<"structure" | "review" | "contact">("structure");
   const [data, setData] = React.useState<any>(null);
   const [sheets, setSheets] = React.useState<any[]>([]);
@@ -66,10 +67,12 @@ export default function CmpPage() {
 }
 
 function StructureTreemap({ data }: { data: any }) {
+  const navigate = useNavigate();
   // super-minimal "puzzle" as stacked rows sized by percentage
   const Block = ({ item }: any) => (
     <div 
       title={`${item.name} • ${item.percentage.toFixed(1)}%`} 
+      onClick={() => navigate(`/hfb/${item.id}`)}
       style={{
         flex: item.percentage, 
         minWidth: 40, 
@@ -79,7 +82,8 @@ function StructureTreemap({ data }: { data: any }) {
         background: "#FFDB00", 
         color: "#111", 
         border: "1px solid #fff", 
-        borderRadius: 8
+        borderRadius: 8,
+        cursor: "pointer"
       }}
     >
       {item.name}
