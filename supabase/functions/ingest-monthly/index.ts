@@ -45,6 +45,16 @@ Deno.serve(async () => {
     }
 
     console.log(`Successfully completed ingest run ${run.id}`);
+    
+    // Refresh materialized views
+    try {
+      const functionsUrl = Deno.env.get("SUPABASE_FUNCTIONS_URL") || "https://kuwrhanybqhfnwvshedl.functions.supabase.co";
+      await fetch(`${functionsUrl}/post-ingest-refresh`, { method: "POST" });
+      console.log("Materialized view refresh triggered");
+    } catch (error) {
+      console.warn("Failed to trigger materialized view refresh:", error);
+    }
+    
     return json({ ok: true, runId: run.id });
     
   } catch (error) {

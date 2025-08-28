@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.ingest-monthly]
 verify_jwt = false
+
+[functions.post-ingest-refresh]
+verify_jwt = false

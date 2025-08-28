@@ -1,6 +1,7 @@
 import React from "react";
 import { SegmentedControl } from "../../packages/ui/src/SegmentedControl";
 import { AppList } from "../components/AppList";
+import { AppMap } from "../components/AppMap";
 import { getCountries, getCountryCmps } from "../lib/api";
 
 export default function Home() {
@@ -47,15 +48,10 @@ export default function Home() {
           <AppList countries={countries} onOpen={openCountry} />
         )}
         {!loading && mode === "map" && (
-          <div style={{ 
-            height: 420, 
-            display: "grid", 
-            placeItems: "center", 
-            border: "1px dashed #ccc", 
-            borderRadius: 12 
-          }}>
-            Map view (Mapbox) coming next
-          </div>
+          <AppMap
+            countries={countries}
+            onCountryClick={openCountry}
+          />
         )}
       </div>
     </div>

@@ -35,14 +35,20 @@ Deno.serve(async (req) => {
     console.log("Fetching countries list");
     
     // If mv_country_counts exists, use it; else compute on the fly.
-    const { data: mv, error: mvErr } = await supabase.from("mv_country_counts").select().order("code", { ascending: true });
+    const { data: mv, error: mvErr } = await supabase
+      .from("mv_country_counts")
+      .select("code,name,centroid,total,published,unpublished")
+      .order("code", { ascending: true });
     if (!mvErr && mv) {
       console.log("Using materialized view for countries");
       return json(mv);
     }
     
     // Fallback: compute counts on the fly
-    const { data: countries, error: cErr } = await supabase.from("countries").select("*").order("code", { ascending: true });
+    const { data: countries, error: cErr } = await supabase
+      .from("countries")
+      .select("code,name,centroid")
+      .order("code", { ascending: true });
     if (cErr) {
       console.error("Error fetching countries:", cErr);
       return err(500, "countries_select_failed", cErr.message);
@@ -60,6 +66,7 @@ Deno.serve(async (req) => {
       results.push({ 
         code: c.code, 
         name: c.name, 
+        centroid: (c as any).centroid ?? null,
         total: total ?? 0, 
         published: pub ?? 0, 
         unpublished: unpub ?? 0 
