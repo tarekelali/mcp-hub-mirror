@@ -19,6 +19,19 @@ Deno.serve(async (req) => {
 
   console.log("APS Webhook: Processing webhook callback");
 
+  // Validate webhook secret
+  const secret = Deno.env.get("APS_WEBHOOK_SECRET");
+  const sig = req.headers.get("x-aps-signature");
+  if (!secret || !sig || sig !== secret) {
+    console.error("Unauthorized webhook request - invalid signature");
+    return new Response(JSON.stringify({ ok: false, code: "unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json", ...corsHeaders },
+    });
+  }
+
+  console.log("Webhook signature validated successfully");
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
