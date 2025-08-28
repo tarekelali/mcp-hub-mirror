@@ -14,7 +14,338 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cmps: {
+        Row: {
+          acc_folder_id: string | null
+          acc_project_id: string
+          area_sqm: number | null
+          country_code: string
+          created_at: string | null
+          id: string
+          name: string
+          published: boolean
+        }
+        Insert: {
+          acc_folder_id?: string | null
+          acc_project_id: string
+          area_sqm?: number | null
+          country_code: string
+          created_at?: string | null
+          id?: string
+          name: string
+          published?: boolean
+        }
+        Update: {
+          acc_folder_id?: string | null
+          acc_project_id?: string
+          area_sqm?: number | null
+          country_code?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          published?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cmps_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          cmp_id: string
+          email: string
+          name: string
+          phone: string | null
+          role: string | null
+        }
+        Insert: {
+          cmp_id: string
+          email: string
+          name: string
+          phone?: string | null
+          role?: string | null
+        }
+        Update: {
+          cmp_id?: string
+          email?: string
+          name?: string
+          phone?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_cmp_id_fkey"
+            columns: ["cmp_id"]
+            isOneToOne: true
+            referencedRelation: "cmps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      countries: {
+        Row: {
+          centroid: Json | null
+          code: string
+          name: string
+        }
+        Insert: {
+          centroid?: Json | null
+          code: string
+          name: string
+        }
+        Update: {
+          centroid?: Json | null
+          code?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      da_jobs: {
+        Row: {
+          attempts: number
+          cmp_id: string
+          created_at: string
+          id: string
+          input_item_id: string
+          input_version_id: string
+          output_urls: Json | null
+          status: string
+          task: string
+          workitem_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          cmp_id: string
+          created_at?: string
+          id?: string
+          input_item_id: string
+          input_version_id: string
+          output_urls?: Json | null
+          status?: string
+          task: string
+          workitem_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          cmp_id?: string
+          created_at?: string
+          id?: string
+          input_item_id?: string
+          input_version_id?: string
+          output_urls?: Json | null
+          status?: string
+          task?: string
+          workitem_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "da_jobs_cmp_id_fkey"
+            columns: ["cmp_id"]
+            isOneToOne: false
+            referencedRelation: "cmps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      detailed_solutions: {
+        Row: {
+          area_sqm: number
+          code: string
+          hfb_id: string
+          id: string
+          name: string | null
+          pct: number
+        }
+        Insert: {
+          area_sqm: number
+          code: string
+          hfb_id: string
+          id?: string
+          name?: string | null
+          pct: number
+        }
+        Update: {
+          area_sqm?: number
+          code?: string
+          hfb_id?: string
+          id?: string
+          name?: string | null
+          pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "detailed_solutions_hfb_id_fkey"
+            columns: ["hfb_id"]
+            isOneToOne: false
+            referencedRelation: "hfbs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hfbs: {
+        Row: {
+          area_sqm: number
+          cmp_id: string
+          id: string
+          level: Database["public"]["Enums"]["level_kind"]
+          name: string
+          pct: number
+        }
+        Insert: {
+          area_sqm: number
+          cmp_id: string
+          id?: string
+          level: Database["public"]["Enums"]["level_kind"]
+          name: string
+          pct: number
+        }
+        Update: {
+          area_sqm?: number
+          cmp_id?: string
+          id?: string
+          level?: Database["public"]["Enums"]["level_kind"]
+          name?: string
+          pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hfbs_cmp_id_fkey"
+            columns: ["cmp_id"]
+            isOneToOne: false
+            referencedRelation: "cmps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingest_jobs: {
+        Row: {
+          attempts: number
+          cmp_id: string
+          id: string
+          requested_by: string | null
+          scheduled_at: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          cmp_id: string
+          id?: string
+          requested_by?: string | null
+          scheduled_at?: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          cmp_id?: string
+          id?: string
+          requested_by?: string | null
+          scheduled_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingest_jobs_cmp_id_fkey"
+            columns: ["cmp_id"]
+            isOneToOne: false
+            referencedRelation: "cmps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingest_runs: {
+        Row: {
+          cadence: string
+          finished_at: string | null
+          id: string
+          notes: string | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          cadence?: string
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          cadence?: string
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      metrics_aps_usage: {
+        Row: {
+          calls: number
+          day: string
+          endpoint: string
+          tokens: number
+        }
+        Insert: {
+          calls?: number
+          day: string
+          endpoint: string
+          tokens?: number
+        }
+        Update: {
+          calls?: number
+          day?: string
+          endpoint?: string
+          tokens?: number
+        }
+        Relationships: []
+      }
+      revit_sheets: {
+        Row: {
+          acc_item_id: string
+          acc_version_id: string
+          cmp_id: string
+          id: string
+          last_synced_at: string | null
+          name: string
+          number: string
+          pdf_url: string | null
+        }
+        Insert: {
+          acc_item_id: string
+          acc_version_id: string
+          cmp_id: string
+          id?: string
+          last_synced_at?: string | null
+          name: string
+          number: string
+          pdf_url?: string | null
+        }
+        Update: {
+          acc_item_id?: string
+          acc_version_id?: string
+          cmp_id?: string
+          id?: string
+          last_synced_at?: string | null
+          name?: string
+          number?: string
+          pdf_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revit_sheets_cmp_id_fkey"
+            columns: ["cmp_id"]
+            isOneToOne: false
+            referencedRelation: "cmps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +354,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      level_kind: "marketHall" | "showroom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +481,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      level_kind: ["marketHall", "showroom"],
+    },
   },
 } as const
