@@ -28,6 +28,7 @@ export default function Diag() {
         viewerSign:  await j(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" } ), // no credentials
         apsStatus:   await j(`${FNS}/auth-aps-status`, { credentials: "include" }),       // needs cookies
         hubs:        await j(`${FNS}/aps-hubs`, { credentials: "include" }),              // needs cookies
+        selftest:    await j(`${FNS}/auth-aps-selftest`),                                // no credentials
       });
     })();
   }, []);

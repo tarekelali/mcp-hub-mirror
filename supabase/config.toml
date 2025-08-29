@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.auth-aps-debug]
 verify_jwt = false
+
+[functions.auth-aps-selftest]
+verify_jwt = false
