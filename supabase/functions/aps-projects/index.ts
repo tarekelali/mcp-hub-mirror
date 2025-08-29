@@ -67,12 +67,24 @@ Deno.serve(async (req) => {
   let accessToken = req.headers.get("x-aps-at");
   let refreshToken = req.headers.get("x-aps-rt");
   const cookies = req.headers.get("cookie") ?? "";
+  let tokenSource = "none";
   
-  if (!accessToken) accessToken = getCookie(cookies, "aps_at");
-  if (!refreshToken) refreshToken = getCookie(cookies, "aps_rt");
+  if (!accessToken) {
+    accessToken = getCookie(cookies, "aps_at");
+    tokenSource = accessToken ? "cookie" : "none";
+  } else {
+    tokenSource = "header";
+  }
+  
+  if (!refreshToken) {
+    refreshToken = getCookie(cookies, "aps_rt");
+  }
+
+  console.log(`Projects - Token source: ${tokenSource}, has AT: ${!!accessToken}, has RT: ${!!refreshToken}`);
 
   // If no AT, try refresh
   if (!accessToken && refreshToken) {
+    console.log("Attempting token refresh for projects");
     const tokenRes = await fetch("https://developer.api.autodesk.com/authentication/v2/token", {
       method: "POST",
       headers: {
@@ -82,18 +94,22 @@ Deno.serve(async (req) => {
       body: new URLSearchParams({
         grant_type: "refresh_token",
         refresh_token: refreshToken,
-        scope: "data:read bucket:read viewables:read account:read",
+        scope: "data:read bucket:read viewables:read account:read offline_access",
       }),
     });
     if (!tokenRes.ok) {
       const text = await tokenRes.text();
+      console.error(`Token refresh failed: ${tokenRes.status} - ${text}`);
       return j({ ok: false, code: "refresh_failed", status: tokenRes.status, body: text }, 502);
     }
     const t = await tokenRes.json();
     accessToken = t.access_token;
+    tokenSource = "refresh";
+    console.log("Token refreshed successfully for projects");
   }
 
   if (!accessToken) {
+    console.log("No access token available for projects");
     return j({ ok: false, code: "not_connected", message: "Connect Autodesk first." }, 401);
   }
 

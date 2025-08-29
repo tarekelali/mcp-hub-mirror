@@ -3,7 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const ORIGIN = Deno.env.get("WEB_ORIGIN")!;
 const CLIENT_ID = Deno.env.get("APS_CLIENT_ID")!;
 const REDIRECT = Deno.env.get("APS_REDIRECT_URL")!; // e.g. https://<ref>.functions.supabase.co/auth-aps-callback
-const SCOPES = "data:read bucket:read viewables:read account:read";
+const SCOPES = "data:read bucket:read viewables:read account:read offline_access";
 
 const cors = {
   "access-control-allow-origin": ORIGIN,

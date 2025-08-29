@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.aps-projects]
 verify_jwt = false
+
+[functions.auth-aps-logout]
+verify_jwt = false
