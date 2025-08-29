@@ -1,18 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-function env(name: string) {
-  const v = Deno.env.get(name);
-  return (typeof v === "string" ? v.trim() : v) || undefined;
-}
-
-const APS_CLIENT_ID = env("APS_CLIENT_ID");
-const APS_CLIENT_SECRET = env("APS_CLIENT_SECRET");
-const WEB_ORIGIN = env("WEB_ORIGIN");
+import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN, APS_SCOPES_2L } from "../_shared/env.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
 const cors = {
   "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type",
+  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
   "access-control-allow-methods": "GET, OPTIONS",
   "access-control-allow-credentials": "true",
 };
@@ -29,8 +21,6 @@ function mask(v?: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  const scopes2 = env("APS_SCOPES_2L") ?? "data:read bucket:read viewables:read";
-
   // Only proceed with token test if we have credentials
   let tokenStatus = 0;
   let tokenBody = "No credentials";
@@ -39,7 +29,7 @@ Deno.serve(async (req) => {
   if (APS_CLIENT_ID && APS_CLIENT_SECRET) {
     const basic = "Basic " + btoa(`${APS_CLIENT_ID}:${APS_CLIENT_SECRET}`);
     hadBasic = !!basic;
-    const form = new URLSearchParams({ grant_type: "client_credentials", scope: scopes2 });
+    const form = new URLSearchParams({ grant_type: "client_credentials", scope: APS_SCOPES_2L });
 
     const r = await fetch("https://developer.api.autodesk.com/authentication/v2/token", {
       method: "POST",
@@ -54,7 +44,7 @@ Deno.serve(async (req) => {
   return j({
     client_id_masked: mask(APS_CLIENT_ID),
     secret_len: (APS_CLIENT_SECRET?.length ?? 0),
-    scopes_2l: scopes2,
+    scopes_2l: APS_SCOPES_2L,
     missing: {
       APS_CLIENT_ID: !APS_CLIENT_ID,
       APS_CLIENT_SECRET: !APS_CLIENT_SECRET,

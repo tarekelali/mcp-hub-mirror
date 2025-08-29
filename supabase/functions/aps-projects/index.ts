@@ -1,16 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN, APS_SCOPES_3L } from "../_shared/env.ts";
 
-function env(name: string) {
-  const v = Deno.env.get(name);
-  return (typeof v === "string" ? v.trim() : v) || undefined;
-}
-
-const WEB_ORIGIN = env("WEB_ORIGIN")!;
-const APS_CLIENT_ID = env("APS_CLIENT_ID")!;
-const APS_CLIENT_SECRET = env("APS_CLIENT_SECRET")!;
+const ORIGIN = WEB_ORIGIN || "*";
 
 const cors = {
-  "access-control-allow-origin": WEB_ORIGIN,
+  "access-control-allow-origin": ORIGIN,
   "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
   "access-control-allow-methods": "GET, OPTIONS",
   "access-control-allow-credentials": "true",
@@ -99,7 +93,7 @@ Deno.serve(async (req) => {
       body: new URLSearchParams({
         grant_type: "refresh_token",
         refresh_token: refreshToken,
-        scope: "data:read bucket:read viewables:read account:read offline_access",
+        scope: APS_SCOPES_3L,
       }),
     });
     if (!tokenRes.ok) {

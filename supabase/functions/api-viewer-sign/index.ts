@@ -1,14 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-// Updated with proper error handling for missing env vars
-
-function env(name: string) {
-  const v = Deno.env.get(name);
-  return (typeof v === "string" ? v.trim() : v) || undefined;
-}
-
-const APS_CLIENT_ID = env("APS_CLIENT_ID");
-const APS_CLIENT_SECRET = env("APS_CLIENT_SECRET");
-const WEB_ORIGIN = env("WEB_ORIGIN");
+import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN, APS_SCOPES_2L } from "../_shared/env.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
 const corsHeaders = {
@@ -30,8 +21,6 @@ Deno.serve(async (req) => {
 
   console.log("Viewer Sign: Processing token request");
 
-  const scopes = env("APS_SCOPES_2L") ?? "data:read bucket:read viewables:read";
-
   // Only require APS_CLIENT_ID and APS_CLIENT_SECRET for 2-legged
   if (!APS_CLIENT_ID || !APS_CLIENT_SECRET) {
     console.error("Missing required APS credentials");
@@ -46,9 +35,9 @@ Deno.serve(async (req) => {
     }, 500);
   }
 
-  console.log(`Using scopes: ${scopes}`);
+  console.log(`Using scopes: ${APS_SCOPES_2L}`);
 
-  // 2-legged OAuth
+  // 2-legged OAuth with Basic auth
   const authHeader = "Basic " + btoa(`${APS_CLIENT_ID}:${APS_CLIENT_SECRET}`);
 
   try {
@@ -60,7 +49,7 @@ Deno.serve(async (req) => {
       },
       body: new URLSearchParams({
         grant_type: "client_credentials",
-        scope: scopes,
+        scope: APS_SCOPES_2L,
       }),
     });
 
