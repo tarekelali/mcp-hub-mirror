@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Tabs } from "../../packages/ui/src/Tabs";
 import { Modal } from "../../packages/ui/src/Modal";
 import { getCmpOverview, getCmpSheets, getCmpContact } from "../lib/cmp";
+import { enqueueDA, daStatus } from "../lib/da";
 
 export default function CmpPage() {
   const { id = "" } = useParams();
@@ -49,7 +50,7 @@ export default function CmpPage() {
       />
       <div style={{ marginTop: 16 }}>
         {tab === "structure" && <StructureTreemap data={data.structure} />}
-        {tab === "review" && <ReviewTable sheets={sheets} onOpen={(url) => setOpenPdf(url)} />}
+        {tab === "review" && <ReviewTable sheets={sheets} onOpen={(url) => setOpenPdf(url)} cmpId={data.cmp.id} />}
         {tab === "contact" && <ContactCard contact={contact} />}
       </div>
 
@@ -126,42 +127,64 @@ function StructureTreemap({ data }: { data: any }) {
   );
 }
 
-function ReviewTable({ sheets, onOpen }: { sheets: any[]; onOpen: (url: string) => void }) {
+function ReviewTable({ sheets, onOpen, cmpId }: { sheets: any[]; onOpen: (url:string)=>void; cmpId: string }) {
+  const [jobs, setJobs] = React.useState<any[]>([]);
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    (async () => { try { setJobs((await daStatus(cmpId)).jobs); } catch {} })();
+    const t = setInterval(async () => { try { setJobs((await daStatus(cmpId)).jobs); } catch {} }, 5000);
+    return () => clearInterval(t);
+  }, [cmpId]);
+
+  const runDA = async () => {
+    if (!sheets.length) return alert("No sheets to export.");
+    setBusy(true);
+    try {
+      const first = sheets[0]; // pilot shortcut
+      await enqueueDA(cmpId, { acc_item_id:first.acc_item_id, acc_version_id:first.acc_version_id });
+      setJobs((await daStatus(cmpId)).jobs);
+    } catch (e:any) {
+      alert("Failed to enqueue DA: " + (e?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-      <thead>
-        <tr>
-          <th align="left">Number</th>
-          <th align="left">Name</th>
-          <th>PDF</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sheets.map(s => (
-          <tr key={s.id} style={{ borderTop: "1px solid #eee" }}>
-            <td>{s.number}</td>
-            <td>{s.name}</td>
-            <td align="center">
-              {s.pdf_url ? (
-                <button 
-                  onClick={() => onOpen(s.pdf_url)} 
-                  style={{ 
-                    padding: "6px 10px", 
-                    borderRadius: 8, 
-                    border: "1px solid #0058A3", 
-                    background: "#0058A3", 
-                    color: "#fff",
-                    cursor: "pointer"
-                  }}
-                >
-                  Open
-                </button>
-              ) : "—"}
-            </td>
-          </tr>
+    <>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+        <div style={{ fontWeight:700 }}>Revit Sheets</div>
+        <button onClick={runDA} disabled={busy} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#0058A3", color:"#fff" }}>
+          {busy ? "Enqueuing…" : "Export sheets (DA)"}
+        </button>
+      </div>
+
+      <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:12 }}>
+        <thead><tr><th align="left">Number</th><th align="left">Name</th><th>PDF</th></tr></thead>
+        <tbody>
+          {sheets.map(s => (
+            <tr key={s.id} style={{ borderTop:"1px solid #eee" }}>
+              <td>{s.number}</td><td>{s.name}</td>
+              <td align="center">{s.pdf_url ? <button onClick={()=>onOpen(s.pdf_url)} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#0058A3", color:"#fff" }}>Open</button> : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div style={{ fontSize:12, opacity:.8 }}>
+        <div style={{ fontWeight:700, marginBottom:4 }}>Recent DA jobs</div>
+        {jobs.length === 0 && <div>No jobs yet.</div>}
+        {jobs.map(j => (
+          <div key={j.id} style={{ display:"flex", gap:8 }}>
+            <div>{new Date(j.created_at).toLocaleString()}</div>
+            <div>• {j.task}</div>
+            <div>• <strong>{j.status}</strong></div>
+            {j.workitem_id && <div>• {j.workitem_id}</div>}
+          </div>
         ))}
-      </tbody>
-    </table>
+      </div>
+    </>
   );
 }
 

@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.api-da-revit-job]
 verify_jwt = false
 
+[functions.api-da-status]
+verify_jwt = false
+
 [functions.webhooks-aps]
 verify_jwt = false
 

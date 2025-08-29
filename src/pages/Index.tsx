@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SegmentedControl } from "../../packages/ui/src/SegmentedControl";
 import { AppList } from "../components/AppList";
 import { AppMap } from "../components/AppMap";
+import { CountryDrawer } from "../components/CountryDrawer";
 import { getCountries, getCountryCmps } from "../lib/api";
 
 export default function Home() {
@@ -10,6 +11,7 @@ export default function Home() {
   const [mode, setMode] = React.useState<"map" | "list">("list");
   const [countries, setCountries] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [drawer, setDrawer] = React.useState<{open:boolean; country:{code:string;name?:string}|null; cmps:any[]}>({open:false, country:null, cmps:[]});
 
   React.useEffect(() => {
     (async () => {
@@ -26,12 +28,7 @@ export default function Home() {
   const openCountry = async (code: string) => {
     try {
       const res = await getCountryCmps(code);
-      // Navigate to first CMP if available, otherwise show alert
-      if (res.cmps.length > 0) {
-        navigate(`/cmp/${res.cmps[0].id}`);
-      } else {
-        alert(`${res.country}: No CMPs found`);
-      }
+      setDrawer({ open:true, country:{ code, name:res.country }, cmps: res.cmps });
     } catch (error) {
       console.error("Failed to load CMPs:", error);
       alert("Failed to load CMPs");
@@ -61,6 +58,14 @@ export default function Home() {
           />
         )}
       </div>
+
+      <CountryDrawer
+        open={drawer.open}
+        onClose={()=>setDrawer(d => ({...d, open:false}))}
+        country={drawer.country}
+        cmps={drawer.cmps}
+        onOpenCmp={(id)=>navigate(`/cmp/${id}`)}
+      />
     </div>
   );
 }
