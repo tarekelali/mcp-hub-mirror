@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       .from("mv_country_counts")
       .select("code,name,centroid,total,published,unpublished")
       .order("code", { ascending: true });
-    if (!mvErr && mv) {
+    if (!mvErr && Array.isArray(mv) && mv.length > 0) {
       console.log("Using materialized view for countries");
       return json(mv);
     }
