@@ -48,6 +48,8 @@ export default function CmpPage() {
       <h1 style={{ marginBottom: 8 }}>{data.cmp.name}</h1>
       <div style={{ opacity: 0.7, marginBottom: 16 }}>
         {data.cmp.countryCode} • {data.cmp.published ? "Published" : "Unpublished"}
+        {data.cmp.unitCode && <span> • Unit {data.cmp.unitCode}</span>}
+        {data.cmp.city && <span> • {data.cmp.city}</span>}
       </div>
       <Tabs
         value={tab}
