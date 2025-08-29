@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
     return html(`<p>OAuth failed (state/session).</p>`, {
-      "Set-Cookie": `aps_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=None`,
+      "Set-Cookie": `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
     });
   }
 
@@ -57,11 +57,11 @@ Deno.serve(async (req) => {
 
   const setCookies = [
     // short-lived access token
-    `aps_at=${t.access_token}; Path=/; Max-Age=${Math.max(60, (t.expires_in ?? 3600) - 60)}; HttpOnly; Secure; SameSite=None`,
+    `aps_at=${t.access_token}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=${Math.max(60, (t.expires_in ?? 3600) - 60)}`,
     // refresh token (lives longer; use conservative TTL if none provided)
-    t.refresh_token ? `aps_rt=${t.refresh_token}; Path=/; Max-Age=${60*60*24*7}; HttpOnly; Secure; SameSite=None` : "",
+    t.refresh_token ? `aps_rt=${t.refresh_token}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=${60*60*24*7}` : "",
     // clear one-time state
-    `aps_state=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=None`,
+    `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
   ].filter(Boolean).join(", ");
 
   return html(`

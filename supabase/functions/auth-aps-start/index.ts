@@ -27,14 +27,14 @@ Deno.serve((req) => {
   authUrl.searchParams.set("state", state);
 
   // IMPORTANT: cookies must be cross-site friendly for the popup:
-  // HttpOnly; Secure; SameSite=None; short TTL
+  // Secure; HttpOnly; SameSite=None; Path=/
   const headers = new Headers({
     Location: authUrl.toString(),
     ...cors,
     "Set-Cookie": [
-      `aps_state=${state}; Path=/; Max-Age=600; HttpOnly; Secure; SameSite=None`,
+      `aps_state=${state}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
       // (optional) remember where we started from
-      `aps_o=1; Path=/; Max-Age=600; HttpOnly; Secure; SameSite=None`,
+      `aps_o=1; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
     ].join(", "),
   });
 

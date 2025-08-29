@@ -9,6 +9,7 @@ const PILOT_CMP = "11111111-1111-1111-1111-111111111111"; // seeded CMP id
 
 export default function Diag() {
   const [out, setOut] = React.useState<any>({});
+  const [debugOut, setDebugOut] = React.useState<any>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -27,7 +28,6 @@ export default function Diag() {
         viewerSign:  await j(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" } ), // no credentials
         apsStatus:   await j(`${FNS}/auth-aps-status`, { credentials: "include" }),       // needs cookies
         hubs:        await j(`${FNS}/aps-hubs`, { credentials: "include" }),              // needs cookies
-        apsDebug:    await j(`${FNS}/auth-aps-debug`),                                   // debug info
       });
     })();
   }, []);
@@ -47,6 +47,19 @@ export default function Diag() {
       }
     };
     window.addEventListener("message", onMsg);
+  };
+
+  const debugAPS = async () => {
+    const j = async (u: string, init?: RequestInit) => {
+      try {
+        const r = await fetch(u, init);
+        const txt = await r.text();
+        try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
+        catch { return { ok: r.ok, status: r.status, body: txt }; }
+      } catch (e) { return String(e); }
+    };
+    const result = await j(`${FNS}/auth-aps-debug`, { credentials: "include" });
+    setDebugOut(result);
   };
 
   return (
@@ -75,6 +88,21 @@ export default function Diag() {
       {/* Debug Info */}
       <div style={{ marginBottom: 16 }}>
         <strong>Origin check:</strong> {window.location.origin}
+      </div>
+
+      {/* Debug APS Button */}
+      <div style={{ marginBottom: 16 }}>
+        <button 
+          onClick={debugAPS}
+          style={{ padding: "4px 8px", backgroundColor: "#00aa44", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
+        >
+          Debug APS
+        </button>
+        {debugOut && (
+          <pre style={{ marginTop: 8, padding: 8, backgroundColor: "#f5f5f5", borderRadius: 4, fontSize: "12px" }}>
+            {JSON.stringify(debugOut, null, 2)}
+          </pre>
+        )}
       </div>
 
       <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(out, null, 2)}</pre>
