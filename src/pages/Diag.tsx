@@ -12,20 +12,20 @@ export default function Diag() {
 
   React.useEffect(() => {
     (async () => {
-      const j = async (u: string, init?: RequestInit) => {
-        try {
-          const r = await fetch(u, { credentials: "include", ...init });
-          const txt = await r.text();
-          try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
-          catch { return { ok: r.ok, status: r.status, body: txt }; }
-        } catch (e) { return String(e); }
-      };
+  const j = async (u: string, init?: RequestInit) => {
+    try {
+      const r = await fetch(u, init);
+      const txt = await r.text();
+      try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
+      catch { return { ok: r.ok, status: r.status, body: txt }; }
+    } catch (e) { return String(e); }
+  };
 
       setOut({
-        countries: await j(`${FNS}/api-countries/api/countries`),
-        cmpOverview: await j(`${FNS}/api-cmp-overview/api/cmp/${PILOT_CMP}/overview`),
-        viewerSign: await j(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" }),
-        apsStatus:  await j(`${FNS}/auth-aps-status`, { credentials: "include" }),
+        countries:   await j(`${FNS}/api-countries/api/countries`),                       // no credentials
+        cmpOverview: await j(`${FNS}/api-cmp-overview/api/cmp/${PILOT_CMP}/overview`),    // no credentials
+        viewerSign:  await j(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" } ), // no credentials
+        apsStatus:   await j(`${FNS}/auth-aps-status`, { credentials: "include" }),       // needs cookies
       });
     })();
   }, []);
