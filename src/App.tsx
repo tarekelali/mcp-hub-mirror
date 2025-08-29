@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import CmpPage from "./pages/CmpPage";
 import HfbPage from "./pages/HfbPage";
 import DsPage from "./pages/DsPage";
+import Diag from "./pages/Diag";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/cmp/:id" element={<CmpPage />} />
           <Route path="/hfb/:id" element={<HfbPage />} />
           <Route path="/ds/:id" element={<DsPage />} />
+          <Route path="/_diag" element={<Diag />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
