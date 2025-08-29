@@ -1,12 +1,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const ORIGIN = Deno.env.get("WEB_ORIGIN")!;
-const CLIENT_ID = Deno.env.get("APS_CLIENT_ID")!;
-const CLIENT_SECRET = Deno.env.get("APS_CLIENT_SECRET")!;
-const READ_ONLY = (Deno.env.get("READ_ONLY_MODE") ?? "true") === "true";
+function env(name: string) {
+  const v = Deno.env.get(name);
+  return (typeof v === "string" ? v.trim() : v) || undefined;
+}
+
+const WEB_ORIGIN = env("WEB_ORIGIN")!;
+const APS_CLIENT_ID = env("APS_CLIENT_ID")!;
+const APS_CLIENT_SECRET = env("APS_CLIENT_SECRET")!;
+const READ_ONLY = (env("READ_ONLY_MODE") ?? "true") === "true";
 
 const cors = {
-  "access-control-allow-origin": ORIGIN,
+  "access-control-allow-origin": WEB_ORIGIN,
   "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
   "access-control-allow-methods": "GET, OPTIONS",
   "access-control-allow-credentials": "true",
@@ -63,7 +68,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
-        "authorization": "Basic " + btoa(`${CLIENT_ID}:${CLIENT_SECRET}`),
+        "authorization": "Basic " + btoa(`${APS_CLIENT_ID}:${APS_CLIENT_SECRET}`),
       },
       body: new URLSearchParams({
         grant_type: "refresh_token",

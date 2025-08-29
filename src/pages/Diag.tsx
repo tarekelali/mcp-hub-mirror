@@ -49,6 +49,7 @@ export default function Diag() {
         apsStatus:   await j(`${FNS}/auth-aps-status`, { credentials: "include" }),       // needs cookies + headers
         hubs:        await j(`${FNS}/aps-hubs`, { credentials: "include" }),              // needs cookies + headers
         selftest:    await j(`${FNS}/auth-aps-selftest`),                                // no credentials
+        version:     await j(`${FNS}/__version`),                                        // no credentials
       };
 
       // If we have hubs, also fetch projects for the first hub
@@ -142,6 +143,17 @@ export default function Diag() {
             Sample projects: {out.projects.body.items.slice(0, 3).map((p: any) => 
               `${p.name} (${p.country || 'Unknown'}/${p.unit || 'N/A'}/${p.city || 'N/A'})`
             ).join(', ')}
+          </div>
+        )}
+      </div>
+
+      {/* Version & Environment Status */}
+      <div style={{ marginBottom: 16 }}>
+        <strong>Environment Status:</strong>
+        {out?.version?.body && (
+          <div style={{ marginTop: 4, fontSize: "12px", fontFamily: "monospace" }}>
+            <div>Build: {out.version.body.build_timestamp}</div>
+            <div>Env Check: ID={out.version.body.has_id ? "✓" : "✗"}, Secret={out.version.body.has_secret ? "✓" : "✗"}, Origin={out.version.body.has_origin ? "✓" : "✗"}</div>
           </div>
         )}
       </div>

@@ -1,10 +1,20 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Updated with proper error handling for missing env vars
 
+function env(name: string) {
+  const v = Deno.env.get(name);
+  return (typeof v === "string" ? v.trim() : v) || undefined;
+}
+
+const APS_CLIENT_ID = env("APS_CLIENT_ID");
+const APS_CLIENT_SECRET = env("APS_CLIENT_SECRET");
+const WEB_ORIGIN = env("WEB_ORIGIN");
+
+const ORIGIN = WEB_ORIGIN || "*";
 const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get("WEB_ORIGIN") || '*',
+  'Access-Control-Allow-Origin': ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-aps-at, x-aps-rt',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Credentials': 'true',
 };
 
@@ -20,32 +30,26 @@ Deno.serve(async (req) => {
 
   console.log("Viewer Sign: Processing token request");
 
-  const clientId = Deno.env.get("APS_CLIENT_ID");
-  const clientSecret = Deno.env.get("APS_CLIENT_SECRET");
-  const scopes = Deno.env.get("APS_SCOPES_2L") ?? "data:read bucket:read viewables:read";
+  const scopes = env("APS_SCOPES_2L") ?? "data:read bucket:read viewables:read";
 
-  const webOrigin = Deno.env.get("WEB_ORIGIN");
-  
-  // Check for missing environment variables and provide detailed error
-  const missing = {
-    "APS_CLIENT_ID": !!clientId,
-    "APS_CLIENT_SECRET": !!clientSecret,
-    "WEB_ORIGIN": !!webOrigin
-  };
-  
-  if (!clientId || !clientSecret || !webOrigin) {
-    console.error("Missing APS credentials");
+  // Only require APS_CLIENT_ID and APS_CLIENT_SECRET for 2-legged
+  if (!APS_CLIENT_ID || !APS_CLIENT_SECRET) {
+    console.error("Missing required APS credentials");
     return json({ 
       ok: false, 
       code: "missing_aps_env", 
-      missing 
+      missing: {
+        "APS_CLIENT_ID": !APS_CLIENT_ID,
+        "APS_CLIENT_SECRET": !APS_CLIENT_SECRET,
+        "WEB_ORIGIN": !WEB_ORIGIN
+      }
     }, 500);
   }
 
   console.log(`Using scopes: ${scopes}`);
 
   // 2-legged OAuth
-  const authHeader = "Basic " + btoa(`${clientId}:${clientSecret}`);
+  const authHeader = "Basic " + btoa(`${APS_CLIENT_ID}:${APS_CLIENT_SECRET}`);
 
   try {
     const res = await fetch("https://developer.api.autodesk.com/authentication/v2/token", {
