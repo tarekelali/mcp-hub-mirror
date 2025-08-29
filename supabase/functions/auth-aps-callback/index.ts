@@ -55,9 +55,9 @@ Deno.serve(async (req) => {
 
   const setCookies = [
     // short-lived access token
-    `aps_at=${t.access_token}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=${Math.max(60, (t.expires_in ?? 3600) - 60)}`,
+    `aps_at=${t.access_token}; Partitioned; SameSite=None; Secure; HttpOnly; Path=/; Max-Age=${Math.max(60, (t.expires_in ?? 3600) - 60)}`,
     // refresh token (lives longer; use conservative TTL if none provided)
-    t.refresh_token ? `aps_rt=${t.refresh_token}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=${60*60*24*7}` : "",
+    t.refresh_token ? `aps_rt=${t.refresh_token}; Partitioned; SameSite=None; Secure; HttpOnly; Path=/; Max-Age=${60*60*24*7}` : "",
     // clear one-time state
     `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
   ].filter(Boolean).join(", ");
@@ -65,7 +65,10 @@ Deno.serve(async (req) => {
   return html(`
     <script>
       localStorage.setItem("aps_connected","1");
-      window.opener && window.opener.postMessage({aps_connected:true},"*");
+      window.opener?.postMessage(
+        { aps_connected: true, aps_at: "${t.access_token}", aps_rt: "${t.refresh_token || ""}", expires_in: ${t.expires_in || 3600} },
+        "*"
+      );
       window.close();
     </script>
     Connected. You can close this window.

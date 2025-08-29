@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.auth-aps-selftest]
 verify_jwt = false
+
+[functions.aps-projects]
+verify_jwt = false

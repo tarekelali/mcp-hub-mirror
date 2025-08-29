@@ -3,7 +3,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const ORIGIN = Deno.env.get("WEB_ORIGIN")!;
 const CLIENT_ID = Deno.env.get("APS_CLIENT_ID")!;
 const CLIENT_SECRET = Deno.env.get("APS_CLIENT_SECRET")!;
-const READ_ONLY = (Deno.env.get("READ_ONLY_MODE") ?? "true") === "true";
 
 const cors = {
   "access-control-allow-origin": ORIGIN,
@@ -28,14 +27,41 @@ function j(body: unknown, status = 200, extraHeaders: HeadersInit = {}) {
   });
 }
 
+const COUNTRY_MAP: Record<string,string> = {
+  Australia: "AU",
+  Netherlands: "NL",
+  Sweden: "SE",
+  "United Kingdom": "GB",
+};
+
+function parseProjectName(name: string) {
+  const parts = name.split("_").filter(Boolean);
+  if (parts.length === 0) return { country: null, unit: null, city: null };
+
+  const countryName = parts[0];
+  const country = COUNTRY_MAP[countryName] ?? null;
+
+  let unit: string | null = null;
+  let city: string | null = null;
+
+  if (parts.length >= 2) {
+    const maybeUnit = parts[1];
+    unit = /^[A-Za-z0-9]+$/.test(maybeUnit) ? maybeUnit : null;
+  }
+  if (parts.length >= 3) {
+    city = parts[2] || null;
+  }
+
+  return { country, unit, city };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "GET") return j({ ok: false, code: "method_not_allowed" }, 405);
 
-  // Read-only guard (belt & braces). We never write to ACC anyway.
-  if (!READ_ONLY) {
-    // no-op placeholder
-  }
+  const url = new URL(req.url);
+  const hubId = url.searchParams.get("hub_id");
+  if (!hubId) return j({ ok: false, code: "missing_hub_id" }, 400);
 
   // Check headers first, then cookies
   let accessToken = req.headers.get("x-aps-at");
@@ -65,32 +91,36 @@ Deno.serve(async (req) => {
     }
     const t = await tokenRes.json();
     accessToken = t.access_token;
-    // (Optional) Rotate cookies here if you have a shared cookie writer; safe to skip for this read.
   }
 
   if (!accessToken) {
     return j({ ok: false, code: "not_connected", message: "Connect Autodesk first." }, 401);
   }
 
-  // List hubs (ACC/BIM 360) for the signed-in Autodesk user
-  const hubsRes = await fetch("https://developer.api.autodesk.com/project/v1/hubs", {
+  // List projects for the hub
+  const projectsRes = await fetch(`https://developer.api.autodesk.com/project/v1/hubs/${hubId}/projects`, {
     headers: { authorization: `Bearer ${accessToken}` },
   });
 
-  if (!hubsRes.ok) {
-    const text = await hubsRes.text();
-    return j({ ok: false, code: "hubs_failed", status: hubsRes.status, body: text }, 502);
+  if (!projectsRes.ok) {
+    const text = await projectsRes.text();
+    return j({ ok: false, code: "projects_failed", status: projectsRes.status, body: text }, 502);
   }
 
-  const hubs = await hubsRes.json().catch(() => ({}));
-  // Normalize minimal payload (id, name, type)
+  const projects = await projectsRes.json().catch(() => ({}));
+  // Normalize payload with parsed metadata
   const items =
-    Array.isArray(hubs?.data)
-      ? hubs.data.map((h: any) => ({
-          id: h?.id,
-          name: h?.attributes?.name ?? h?.attributes?.displayName ?? "",
-          type: h?.attributes?.extension?.type ?? "",
-        }))
+    Array.isArray(projects?.data)
+      ? projects.data.map((p: any) => {
+          const name = p?.attributes?.name ?? "";
+          const parsed = parseProjectName(name);
+          return {
+            id: p?.id,
+            name,
+            type: p?.attributes?.extension?.type ?? "",
+            ...parsed,
+          };
+        })
       : [];
 
   return j({ ok: true, items });

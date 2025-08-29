@@ -1,9 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
+const ORIGIN = Deno.env.get("WEB_ORIGIN")!;
 const cors = {
-  "access-control-allow-origin": "*",
+  "access-control-allow-origin": ORIGIN,
   "access-control-allow-headers": "authorization, x-client-info, content-type",
   "access-control-allow-methods": "GET, OPTIONS",
+  "access-control-allow-credentials": "true",
 };
 
 function j(body: unknown, status = 200) {
