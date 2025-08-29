@@ -54,6 +54,8 @@ Deno.serve(async (req) => {
         grant_type: "refresh_token",
         refresh_token: refreshToken,
         scope: "data:read bucket:read viewables:read account:read",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
       }),
     });
     if (!tokenRes.ok) {

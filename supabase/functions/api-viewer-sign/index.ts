@@ -30,10 +30,6 @@ Deno.serve(async (req) => {
   console.log(`Using scopes: ${scopes}`);
 
   // 2-legged OAuth
-  const body = new URLSearchParams();
-  body.set("grant_type", "client_credentials");
-  body.set("scope", scopes);
-
   const authHeader = "Basic " + btoa(`${clientId}:${clientSecret}`);
 
   try {
@@ -43,13 +39,18 @@ Deno.serve(async (req) => {
         "content-type": "application/x-www-form-urlencoded",
         "authorization": authHeader
       },
-      body,
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        scope: scopes,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
     });
 
     if (!res.ok) {
       const text = await res.text();
       console.error(`APS token request failed: ${res.status} - ${text}`);
-      return json({ ok: false, code: "aps_token_failed", message: text }, 502);
+      return json({ ok: false, code: "aps_token_failed", status: res.status, body: text }, 502);
     }
 
     const token = await res.json();
