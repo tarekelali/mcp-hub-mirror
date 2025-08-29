@@ -1,9 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// Updated with proper error handling for missing env vars
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': Deno.env.get("WEB_ORIGIN") || '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-aps-at, x-aps-rt',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Credentials': 'true',
 };
 
 Deno.serve(async (req) => {
@@ -22,9 +24,22 @@ Deno.serve(async (req) => {
   const clientSecret = Deno.env.get("APS_CLIENT_SECRET");
   const scopes = Deno.env.get("APS_SCOPES_2L") ?? "data:read bucket:read viewables:read";
 
-  if (!clientId || !clientSecret) {
+  const webOrigin = Deno.env.get("WEB_ORIGIN");
+  
+  // Check for missing environment variables and provide detailed error
+  const missing = {
+    "APS_CLIENT_ID": !!clientId,
+    "APS_CLIENT_SECRET": !!clientSecret,
+    "WEB_ORIGIN": !!webOrigin
+  };
+  
+  if (!clientId || !clientSecret || !webOrigin) {
     console.error("Missing APS credentials");
-    return json({ ok: false, code: "missing_aps_env", message: "APS env vars missing" }, 500);
+    return json({ 
+      ok: false, 
+      code: "missing_aps_env", 
+      missing 
+    }, 500);
   }
 
   console.log(`Using scopes: ${scopes}`);

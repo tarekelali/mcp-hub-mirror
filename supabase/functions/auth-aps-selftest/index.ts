@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     secret_len: secret.length,
     scopes_2l: scopes2,
     token_status: r.status,
-    token_body: text,
+    token_body: r.ok ? "SUCCESS" : text, // Don't leak token details, just show success/error
     had_basic: !!basic,
   }, 200);
 });
