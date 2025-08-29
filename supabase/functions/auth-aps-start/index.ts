@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     response_type: "code",
     client_id: Deno.env.get("APS_CLIENT_ID")!,
     redirect_uri: Deno.env.get("APS_REDIRECT_URL")!,
-    scope: "data:read data:write bucket:read bucket:create viewables:read",
+    scope: "data:read bucket:read viewables:read account:read",
     state: sess
   });
   setSessionCookie(h, sess);
