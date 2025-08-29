@@ -15,8 +15,13 @@ export default function Diag() {
     const hdrs: Record<string, string> = {};
     const at = localStorage.getItem("aps_at");
     const rt = localStorage.getItem("aps_rt");
+    console.log("[DEBUG] localStorage tokens:", { 
+      at: at ? "present" : "missing", 
+      rt: rt ? "present" : "missing" 
+    });
     if (at) hdrs["X-APS-AT"] = at;
     if (rt) hdrs["X-APS-RT"] = rt;
+    console.log("[DEBUG] Headers being sent:", Object.keys(hdrs));
     return hdrs;
   };
 
