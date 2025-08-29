@@ -206,6 +206,33 @@ export type Database = {
           },
         ]
       }
+      editor_tokens: {
+        Row: {
+          aps_user_id: string | null
+          created_at: string | null
+          refresh_token_enc: string
+          scope: string
+          session_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          aps_user_id?: string | null
+          created_at?: string | null
+          refresh_token_enc: string
+          scope: string
+          session_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          aps_user_id?: string | null
+          created_at?: string | null
+          refresh_token_enc?: string
+          scope?: string
+          session_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       hfbs: {
         Row: {
           area_sqm: number

@@ -4,6 +4,8 @@ import { Tabs } from "../../packages/ui/src/Tabs";
 import { Modal } from "../../packages/ui/src/Modal";
 import { getCmpOverview, getCmpSheets, getCmpContact } from "../lib/cmp";
 import { enqueueDA, daStatus } from "../lib/da";
+import { AccPicker } from "../components/AccPicker";
+import { BASE } from "../lib/api";
 
 export default function CmpPage() {
   const { id = "" } = useParams();
@@ -25,6 +27,14 @@ export default function CmpPage() {
         setData(ov);
         setSheets(sh.sheets);
         setContact(ct.contact);
+        // Expose CMP's ACC IDs to the page
+        if (ov?.cmp) {
+          (window as any).__cmp = {
+            id: ov.cmp.id,
+            accProjectId: ov.cmp.accProjectId,
+            accFolderId: ov.cmp.accFolderId
+          };
+        }
       } catch (error) {
         console.error("Failed to load CMP data:", error);
       }
@@ -127,15 +137,44 @@ function StructureTreemap({ data }: { data: any }) {
   );
 }
 
+async function checkApsConnected() {
+  try {
+    const r = await fetch(`${BASE}/auth-aps-status`);
+    if (!r.ok) return false; 
+    const j = await r.json(); 
+    return !!j.connected;
+  } catch { 
+    return false; 
+  }
+}
+
 function ReviewTable({ sheets, onOpen, cmpId }: { sheets: any[]; onOpen: (url:string)=>void; cmpId: string }) {
   const [jobs, setJobs] = React.useState<any[]>([]);
   const [busy, setBusy] = React.useState(false);
+  const [connected, setConnected] = React.useState<boolean>(false);
+  const [pickerOpen, setPickerOpen] = React.useState(false);
 
   React.useEffect(() => {
     (async () => { try { setJobs((await daStatus(cmpId)).jobs); } catch {} })();
     const t = setInterval(async () => { try { setJobs((await daStatus(cmpId)).jobs); } catch {} }, 5000);
     return () => clearInterval(t);
   }, [cmpId]);
+
+  React.useEffect(() => { 
+    (async () => setConnected(await checkApsConnected()))(); 
+  }, []);
+
+  const connect = () => {
+    const w = window.open(`${BASE}/auth-aps-start`, "aps", "width=640,height=720");
+    const handler = (e: any) => { 
+      if (e.data?.aps_connected) { 
+        setConnected(true); 
+        window.removeEventListener("message", handler); 
+        w?.close(); 
+      } 
+    };
+    window.addEventListener("message", handler);
+  };
 
   const runDA = async () => {
     if (!sheets.length) return alert("No sheets to export.");
@@ -151,13 +190,35 @@ function ReviewTable({ sheets, onOpen, cmpId }: { sheets: any[]; onOpen: (url:st
     }
   };
 
+  const runDAFromACC = async (sel: { itemId:string; versionId:string; name:string }) => {
+    setBusy(true);
+    try {
+      await enqueueDA(cmpId, { acc_item_id: sel.itemId, acc_version_id: sel.versionId });
+      setJobs((await daStatus(cmpId)).jobs);
+    } catch (e:any) { 
+      alert("Failed to enqueue DA: " + (e?.message ?? e)); 
+    } finally { 
+      setBusy(false); 
+    }
+  };
+
   return (
     <>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
         <div style={{ fontWeight:700 }}>Revit Sheets</div>
-        <button onClick={runDA} disabled={busy} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#0058A3", color:"#fff" }}>
-          {busy ? "Enqueuing…" : "Export sheets (DA)"}
-        </button>
+        <div style={{ display:"flex", gap:8 }}>
+          {!connected && (
+            <button onClick={connect} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#fff", color:"#0058A3" }}>
+              Connect Autodesk
+            </button>
+          )}
+          <button onClick={()=>setPickerOpen(true)} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#fff", color:"#0058A3" }}>
+            Pick from ACC
+          </button>
+          <button onClick={runDA} disabled={busy} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#0058A3", color:"#fff" }}>
+            {busy ? "Enqueuing…" : "Export sheets (DA)"}
+          </button>
+        </div>
       </div>
 
       <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:12 }}>
@@ -184,6 +245,14 @@ function ReviewTable({ sheets, onOpen, cmpId }: { sheets: any[]; onOpen: (url:st
           </div>
         ))}
       </div>
+
+      <AccPicker
+        open={pickerOpen}
+        onClose={()=>setPickerOpen(false)}
+        projectId={(window as any).__cmp?.accProjectId || ""}
+        folderId={(window as any).__cmp?.accFolderId || ""}
+        onPick={runDAFromACC}
+      />
     </>
   );
 }

@@ -18,6 +18,18 @@ verify_jwt = false
 [functions.webhooks-aps]
 verify_jwt = false
 
+[functions.auth-aps-start]
+verify_jwt = false
+
+[functions.auth-aps-callback]
+verify_jwt = false
+
+[functions.auth-aps-status]
+verify_jwt = false
+
+[functions.acc-proxy]
+verify_jwt = false
+
 [functions.ingest-monthly]
 verify_jwt = false
 

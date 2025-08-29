@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
   // Fetch CMP details
   const { data: cmp, error: cmpErr } = await supabase
     .from("cmps")
-    .select("id, name, country_code, published, area_sqm")
+    .select("id, name, country_code, published, area_sqm, acc_project_id, acc_folder_id")
     .eq("id", cmpId)
     .maybeSingle();
 
@@ -83,6 +83,8 @@ Deno.serve(async (req) => {
       countryCode: cmp.country_code,
       published: cmp.published,
       areaSqm: cmp.area_sqm,
+      accProjectId: (cmp as any).acc_project_id,
+      accFolderId: (cmp as any).acc_folder_id,
     },
     structure: {
       marketHall: summarize(left),
@@ -118,7 +120,11 @@ Deno.serve(async (req) => {
   function json(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), { 
       status, 
-      headers: { "content-type": "application/json", ...corsHeaders } 
+      headers: { 
+        "content-type": "application/json", 
+        "cache-control": "public, s-maxage=300",
+        ...corsHeaders 
+      } 
     });
   }
   

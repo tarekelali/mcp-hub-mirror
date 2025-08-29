@@ -104,7 +104,11 @@ Deno.serve(async (req) => {
   function json(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {
       status,
-      headers: { "content-type": "application/json", ...corsHeaders },
+      headers: { 
+        "content-type": "application/json", 
+        "cache-control": "public, s-maxage=300",
+        ...corsHeaders 
+      },
     });
   }
   
