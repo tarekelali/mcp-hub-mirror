@@ -24,21 +24,34 @@ Deno.serve(async (req) => {
   const cookieAt = getCookie(cookies, "aps_at");
   const cookieRt = getCookie(cookies, "aps_rt");
   
-  const hasAt = !!(headerAt || cookieAt);
-  const hasRt = !!(headerRt || cookieRt);
-  const via = headerAt ? "header" : (cookieAt ? "cookie" : "none");
-  const connected = hasAt || hasRt;
+  let via = "none";
+  let connected = false;
   
-  if (!connected) {
+  if (headerAt || headerRt) {
+    via = "header";
+    connected = true;
+  } else if (cookieAt || cookieRt) {
+    via = "cookie";
+    connected = true;
+  } else {
+    // Fallback to session check
     const sess = await readSessionCookie(req);
     if (sess) {
       const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
       const { data } = await supabase.from("editor_tokens").select("session_id").eq("session_id", sess).maybeSingle();
-      return j({ connected: !!data, has_at_cookie: false, has_rt_cookie: false, via: "session" });
+      if (data) {
+        via = "session";
+        connected = true;
+      }
     }
   }
   
-  return j({ connected, has_at_cookie: !!cookieAt, has_rt_cookie: !!cookieRt, via });
+  return j({ 
+    connected,
+    via, 
+    has_at_cookie: !!cookieAt, 
+    has_rt_cookie: !!cookieRt 
+  });
   
   function j(b:any){ return new Response(JSON.stringify(b), { headers: { "content-type":"application/json", ...cors } }); }
 });

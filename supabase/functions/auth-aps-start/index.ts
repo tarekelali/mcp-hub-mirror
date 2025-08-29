@@ -7,7 +7,7 @@ const SCOPES = "data:read bucket:read viewables:read account:read";
 
 const cors = {
   "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type",
+  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
   "access-control-allow-methods": "GET, OPTIONS",
   "access-control-allow-credentials": "true",
 };
@@ -32,9 +32,9 @@ Deno.serve((req) => {
     Location: authUrl.toString(),
     ...cors,
     "Set-Cookie": [
-      `aps_state=${state}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
+      `aps_state=${state}; Partitioned; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
       // (optional) remember where we started from
-      `aps_o=1; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
+      `aps_o=1; Partitioned; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
     ].join(", "),
   });
 

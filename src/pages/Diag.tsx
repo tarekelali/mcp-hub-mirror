@@ -42,14 +42,22 @@ export default function Diag() {
     } catch (e) { return String(e); }
   };
 
-      setOut({
+      const initialData: any = {
         countries:   await j(`${FNS}/api-countries/api/countries`),                       // no credentials
         cmpOverview: await j(`${FNS}/api-cmp-overview/api/cmp/${PILOT_CMP}/overview`),    // no credentials
         viewerSign:  await j(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" } ), // no credentials
         apsStatus:   await j(`${FNS}/auth-aps-status`, { credentials: "include" }),       // needs cookies + headers
         hubs:        await j(`${FNS}/aps-hubs`, { credentials: "include" }),              // needs cookies + headers
         selftest:    await j(`${FNS}/auth-aps-selftest`),                                // no credentials
-      });
+      };
+
+      // If we have hubs, also fetch projects for the first hub
+      if (initialData.hubs && typeof initialData.hubs === 'object' && initialData.hubs.body?.items?.length > 0) {
+        const firstHubId = initialData.hubs.body.items[0].id;
+        initialData.projects = await j(`${FNS}/aps-projects?hub_id=${firstHubId}`, { credentials: "include" });
+      }
+
+      setOut(initialData);
     })();
 
     return () => window.removeEventListener("message", handleMessage);
@@ -99,8 +107,19 @@ export default function Diag() {
       
       {/* APS Connection Status */}
       <div style={{ marginBottom: 16 }}>
-        <strong>APS Status:</strong> {out?.apsStatus?.connected ? "Connected" : "Not Connected"}
-        {!out?.apsStatus?.connected && (
+        <strong>APS Status:</strong> {out?.apsStatus?.body?.connected ? "Connected" : "Not Connected"}
+        {out?.apsStatus?.body?.via && (
+          <span style={{ 
+            marginLeft: 8, 
+            padding: "2px 6px", 
+            backgroundColor: "#e0e0e0", 
+            borderRadius: 3, 
+            fontSize: "12px" 
+          }}>
+            via: {out.apsStatus.body.via}
+          </span>
+        )}
+        {!out?.apsStatus?.body?.connected && (
           <button 
             onClick={connectAPS}
             style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#0066cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
@@ -112,7 +131,19 @@ export default function Diag() {
 
       {/* Hubs Count */}
       <div style={{ marginBottom: 16 }}>
-        <strong>Hubs count:</strong> {Array.isArray(out?.hubs?.items) ? out.hubs.items.length : 0}
+        <strong>Hubs count:</strong> {Array.isArray(out?.hubs?.body?.items) ? out.hubs.body.items.length : 0}
+      </div>
+
+      {/* Projects Count */}
+      <div style={{ marginBottom: 16 }}>
+        <strong>Projects count:</strong> {Array.isArray(out?.projects?.body?.items) ? out.projects.body.items.length : 0}
+        {out?.projects?.body?.items?.length > 0 && (
+          <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
+            Sample projects: {out.projects.body.items.slice(0, 3).map((p: any) => 
+              `${p.name} (${p.country || 'Unknown'}/${p.unit || 'N/A'}/${p.city || 'N/A'})`
+            ).join(', ')}
+          </div>
+        )}
       </div>
 
       {/* Debug Info */}

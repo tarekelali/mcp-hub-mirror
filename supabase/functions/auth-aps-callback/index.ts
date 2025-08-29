@@ -7,7 +7,7 @@ const REDIRECT = Deno.env.get("APS_REDIRECT_URL")!;
 
 const cors = {
   "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type",
+  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
   "access-control-allow-methods": "GET, OPTIONS",
   "access-control-allow-credentials": "true",
 };
