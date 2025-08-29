@@ -71,6 +71,11 @@ export default function Diag() {
         <strong>Hubs count:</strong> {Array.isArray(out?.hubs?.items) ? out.hubs.items.length : 0}
       </div>
 
+      {/* Debug Info */}
+      <div style={{ marginBottom: 16 }}>
+        <strong>Origin check:</strong> {window.location.origin}
+      </div>
+
       <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(out, null, 2)}</pre>
     </div>
   );
