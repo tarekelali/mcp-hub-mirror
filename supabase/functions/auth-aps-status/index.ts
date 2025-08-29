@@ -25,6 +25,16 @@ Deno.serve(async (req) => {
   const cookieAt = getCookie(cookies, "aps_at");
   const cookieRt = getCookie(cookies, "aps_rt");
   
+  // Log what we're receiving for debugging
+  console.log("[auth-aps-status] Headers:", { 
+    "x-aps-at": headerAt ? "present" : "missing",
+    "x-aps-rt": headerRt ? "present" : "missing"
+  });
+  console.log("[auth-aps-status] Cookies:", {
+    "aps_at": cookieAt ? "present" : "missing", 
+    "aps_rt": cookieRt ? "present" : "missing"
+  });
+  
   let via = "none";
   let connected = false;
   
@@ -51,6 +61,8 @@ Deno.serve(async (req) => {
     connected,
     via, 
     has_at_cookie: !!cookieAt, 
-    has_rt_cookie: !!cookieRt 
+    has_rt_cookie: !!cookieRt,
+    has_at_header: !!headerAt,
+    has_rt_header: !!headerRt
   }), { headers: { "content-type":"application/json", ...cors } });
 });
