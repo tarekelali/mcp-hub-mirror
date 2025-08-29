@@ -14,9 +14,10 @@ export default function Diag() {
     (async () => {
       const j = async (u: string, init?: RequestInit) => {
         try {
-          const r = await fetch(u, init);
+          const r = await fetch(u, { credentials: "include", ...init });
           const txt = await r.text();
-          try { return JSON.parse(txt); } catch { return txt; }
+          try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
+          catch { return { ok: r.ok, status: r.status, body: txt }; }
         } catch (e) { return String(e); }
       };
 
