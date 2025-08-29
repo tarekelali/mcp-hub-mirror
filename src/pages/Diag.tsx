@@ -1,6 +1,10 @@
 import React from "react";
 
-const FNS = import.meta.env.VITE_FUNCTIONS_BASE; // e.g. https://<ref>.functions.supabase.co
+const FNS =
+  import.meta.env.VITE_FUNCTIONS_BASE ||
+  (window.location.hostname === "localhost"
+    ? "http://127.0.0.1:54321"
+    : "https://kuwrhanybqhfnwvshedl.functions.supabase.co");
 const PILOT_CMP = "11111111-1111-1111-1111-111111111111"; // seeded CMP id
 
 export default function Diag() {
@@ -28,6 +32,7 @@ export default function Diag() {
   return (
     <div style={{ padding: 16 }}>
       <h1>Diagnostics</h1>
+      <div style={{ opacity:.7, marginBottom:8 }}>FNS = {FNS}</div>
       <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(out, null, 2)}</pre>
     </div>
   );

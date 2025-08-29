@@ -3,7 +3,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { encrypt } from "../_shared/crypto.ts";
 import { readSessionCookie } from "../_shared/cookies.ts";
 
+const ORIGIN = Deno.env.get("WEB_ORIGIN")!;
+const cors = {
+  "access-control-allow-origin": ORIGIN,
+  "access-control-allow-headers": "authorization, x-client-info, content-type",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
+  "access-control-allow-credentials": "true",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -43,5 +52,5 @@ Deno.serve(async (req) => {
     window.opener && window.opener.postMessage({aps_connected:true},"*");
     window.close();
   </script>Connected. You can close this window.`);
-  function html(s: string) { return new Response(s, { headers: { "content-type": "text/html" } }); }
+  function html(s: string) { return new Response(s, { headers: { "content-type": "text/html", ...cors } }); }
 });

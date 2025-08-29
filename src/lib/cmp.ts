@@ -1,4 +1,6 @@
-import { BASE } from "./api";
+const BASE = import.meta.env.VITE_FUNCTIONS_BASE || (window.location.hostname === "localhost"
+  ? "http://127.0.0.1:54321"
+  : "https://kuwrhanybqhfnwvshedl.functions.supabase.co");
 
 export async function getCmpOverview(id: string) {
   const r = await fetch(`${BASE}/api-cmp-overview/api/cmp/${id}/overview`);

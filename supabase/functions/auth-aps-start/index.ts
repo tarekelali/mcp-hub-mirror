@@ -1,8 +1,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { setSessionCookie, readSessionCookie, ensureSession } from "../_shared/cookies.ts";
 
+const ORIGIN = Deno.env.get("WEB_ORIGIN")!;
+const cors = {
+  "access-control-allow-origin": ORIGIN,
+  "access-control-allow-headers": "authorization, x-client-info, content-type",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
+  "access-control-allow-credentials": "true",
+};
+
 Deno.serve(async (req) => {
-  const h = new Headers({ "cache-control": "no-store" });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const h = new Headers({ "cache-control": "no-store", ...cors });
   // session
   const sess = ensureSession(h, await readSessionCookie(req));
   const params = new URLSearchParams({
