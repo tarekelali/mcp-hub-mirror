@@ -14,36 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      acc_project_map: {
+        Row: {
+          acc_project_id: string
+          city: string | null
+          cmp_id: string | null
+          country_code: string | null
+          created_at: string | null
+          name: string
+          parsed: Json | null
+          unit_code: string | null
+        }
+        Insert: {
+          acc_project_id: string
+          city?: string | null
+          cmp_id?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          name: string
+          parsed?: Json | null
+          unit_code?: string | null
+        }
+        Update: {
+          acc_project_id?: string
+          city?: string | null
+          cmp_id?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          name?: string
+          parsed?: Json | null
+          unit_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acc_project_map_cmp_id_fkey"
+            columns: ["cmp_id"]
+            isOneToOne: false
+            referencedRelation: "cmps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cmps: {
         Row: {
           acc_folder_id: string | null
           acc_project_id: string
           area_sqm: number | null
+          city: string | null
           country_code: string
           created_at: string | null
           id: string
           name: string
           published: boolean
+          unit_code: string | null
         }
         Insert: {
           acc_folder_id?: string | null
           acc_project_id: string
           area_sqm?: number | null
+          city?: string | null
           country_code: string
           created_at?: string | null
           id?: string
           name: string
           published?: boolean
+          unit_code?: string | null
         }
         Update: {
           acc_folder_id?: string | null
           acc_project_id?: string
           area_sqm?: number | null
+          city?: string | null
           country_code?: string
           created_at?: string | null
           id?: string
           name?: string
           published?: boolean
+          unit_code?: string | null
         }
         Relationships: [
           {
