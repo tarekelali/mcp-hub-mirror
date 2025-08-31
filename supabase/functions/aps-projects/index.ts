@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN, APS_SCOPES_3L } from "../_shared/env.ts";
 import { dataCors } from "../_shared/cors.ts";
 
@@ -59,6 +60,23 @@ function parseProjectName(name: string) {
   return { country, unit, city };
 }
 
+async function trackMetrics(functionName: string, statusClass: string) {
+  try {
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    await supabase.from("aps_metrics").upsert({
+      day: new Date().toISOString().split('T')[0],
+      function_name: functionName,
+      status_class: statusClass,
+      count: 1
+    }, {
+      onConflict: "day,function_name,status_class",
+      ignoreDuplicates: false
+    });
+  } catch (error) {
+    console.error("Metrics tracking failed:", error);
+  }
+}
+
 // Simple in-memory rate limiting
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
@@ -106,6 +124,7 @@ Deno.serve(async (req) => {
   // Rate limiting
   const clientIP = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
   if (!checkRateLimit(clientIP)) {
+    await trackMetrics("aps-projects", "rate_limited");
     return j({ ok: false, code: "rate_limited" }, 429);
   }
 
@@ -188,6 +207,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Projects fetch failed:", error);
+    await trackMetrics("aps-projects", "error");
     return j({ ok: false, code: "projects_failed", error: String(error) }, 502);
   }
 
@@ -234,6 +254,7 @@ Deno.serve(async (req) => {
   // Create sample array (first 3 items after filters)
   const sample = filteredItems.slice(0, 3);
 
+  await trackMetrics("aps-projects", "success");
   return j({ 
     ok: true, 
     items: paginatedItems,
