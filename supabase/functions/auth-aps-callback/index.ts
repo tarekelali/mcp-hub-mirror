@@ -55,52 +55,30 @@ Deno.serve(async (req) => {
     `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
   ].filter(Boolean).join(", ");
 
-  if (returnTo) {
-    return html(`
-      <script>
-        (function () {
-          var at = ${JSON.stringify(t.access_token)};
-          var rt = ${JSON.stringify(t.refresh_token || "")};
-          var url = ${JSON.stringify(returnTo)} + "#aps_at=" + encodeURIComponent(at) + "&aps_rt=" + encodeURIComponent(rt);
-          location.replace(url);
-        })();
-      </script>
-      Redirecting…
-    `, { "Set-Cookie": setCookies, ...CORS });
-  }
-
   const APP = WEB_ORIGIN + "/_diag";
-  const hash = `#aps_at=${encodeURIComponent(t.access_token)}&aps_rt=${encodeURIComponent(t.refresh_token || "")}`;
   const query = `?aps_at=${encodeURIComponent(t.access_token)}&aps_rt=${encodeURIComponent(t.refresh_token || "")}`;
 
-  // 1) If aps_return cookie present:
+  // 1) If aps_return cookie present: redirect to returnTo with query params
   if (returnTo) {
-    return html(`<script>location.replace(${JSON.stringify(returnTo)} + ${JSON.stringify(hash)});</script>`, { "Set-Cookie": setCookies, ...CORS });
+    const redirectUrl = returnTo + query;
+    return new Response(null, {
+      status: 302,
+      headers: {
+        "Location": redirectUrl,
+        "Set-Cookie": setCookies,
+        ...CORS
+      }
+    });
   }
 
-  // 2) Popup path (opener) – keep postMessage + hash bridge:
-  return html(`
-    <script>
-      (function () {
-        var at = ${JSON.stringify(t.access_token)};
-        var rt = ${JSON.stringify(t.refresh_token || "")};
-        var exp = ${JSON.stringify(t.expires_in || 3600)};
-        try {
-          if (window.opener) {
-            window.opener.postMessage({ aps_connected: true, aps_at: at, aps_rt: rt, expires_in: exp }, "*");
-            try { 
-              window.opener.location.href = ${JSON.stringify(APP)} + ${JSON.stringify(hash)}; 
-            } catch (e) { /* ignore */ }
-            window.close();
-          } else {
-            // 3) Same-tab path: send **query** (most robust) and also keep hash for safety
-            location.replace(${JSON.stringify(APP)} + ${JSON.stringify(query)});
-          }
-        } catch (e) {
-          location.replace(${JSON.stringify(APP)} + ${JSON.stringify(query)});
-        }
-      })();
-    </script>
-    Redirecting…
-  `, { "Set-Cookie": setCookies, ...CORS });
+  // 2) No returnTo: redirect to APP with query params (works for both popup and same-tab)
+  const redirectUrl = APP + query;
+  return new Response(null, {
+    status: 302,
+    headers: {
+      "Location": redirectUrl,
+      "Set-Cookie": setCookies,
+      ...CORS
+    }
+  });
 });
