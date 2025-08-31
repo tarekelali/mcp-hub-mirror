@@ -61,13 +61,27 @@ Deno.serve(async (req) => {
 
   return html(`
     <script>
-      localStorage.setItem("aps_connected","1");
-      window.opener?.postMessage(
-        { aps_connected: true, aps_at: "${t.access_token}", aps_rt: "${t.refresh_token || ""}", expires_in: ${t.expires_in || 3600} },
-        "*"
-      );
-      window.close();
+      (function () {
+        var at = ${JSON.stringify(t.access_token)};
+        var rt = ${JSON.stringify(t.refresh_token || "")};
+        var exp = ${JSON.stringify(t.expires_in || 3600)};
+        try {
+          localStorage.setItem("aps_connected","1");
+          // 1) postMessage (primary path)
+          if (window.opener) {
+            window.opener.postMessage({ aps_connected: true, aps_at: at, aps_rt: rt, expires_in: exp }, "*");
+          }
+          // 2) URL-hash bridge (fallback; works even if postMessage is dropped)
+          if (window.opener) {
+            try {
+              window.opener.location.href = ${JSON.stringify(WEB_ORIGIN)} + "/_diag#aps_at=" + encodeURIComponent(at) + "&aps_rt=" + encodeURIComponent(rt);
+            } catch (e) { /* ignore */ }
+          }
+        } finally {
+          window.close();
+        }
+      })();
     </script>
     Connected. You can close this window.
-  `, { "Set-Cookie": setCookies });
+  `, { "Set-Cookie": setCookies, ...cors });
 });

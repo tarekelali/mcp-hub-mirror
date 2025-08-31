@@ -10,20 +10,39 @@ const PILOT_CMP = "11111111-1111-1111-1111-111111111111"; // seeded CMP id
 export default function Diag() {
   const [out, setOut] = React.useState<any>({});
   const [debugOut, setDebugOut] = React.useState<any>(null);
+  const [manualAT, setManualAT] = React.useState("");
 
   const getHeaders = () => {
     const hdrs: Record<string, string> = {};
-    const at = localStorage.getItem("aps_at");
-    const rt = localStorage.getItem("aps_rt");
-    console.log("[DEBUG] localStorage tokens:", { 
-      at: at ? "present" : "missing", 
-      rt: rt ? "present" : "missing" 
-    });
-    if (at) hdrs["X-APS-AT"] = at;
+    const at = localStorage.getItem("aps_at") || "";
+    const rt = localStorage.getItem("aps_rt") || "";
+    if (at) {
+      hdrs["X-APS-AT"] = at;                // our custom header
+      hdrs["Authorization"] = `Bearer ${at}`; // standard Bearer (server will accept either)
+    }
     if (rt) hdrs["X-APS-RT"] = rt;
+    // helpful debug
+    console.log("[DEBUG] aps_at length:", at ? at.length : 0, "aps_rt length:", rt ? rt.length : 0);
     console.log("[DEBUG] Headers being sent:", Object.keys(hdrs));
     return hdrs;
   };
+
+  // URL-hash bridge: parse tokens from URL hash
+  React.useEffect(() => {
+    const raw = window.location.hash.replace(/^#/, "");
+    if (raw) {
+      const sp = new URLSearchParams(raw);
+      const at = sp.get("aps_at") || sp.get("at");
+      const rt = sp.get("aps_rt") || sp.get("rt");
+      if (at) localStorage.setItem("aps_at", at);
+      if (rt) localStorage.setItem("aps_rt", rt);
+      if (at || rt) {
+        // strip hash so it doesn't linger in address bar
+        history.replaceState(null, "", window.location.pathname);
+        console.log("[APS] URL hash tokens parsed and saved");
+      }
+    }
+  }, []);
 
   React.useEffect(() => {
     // Listen for tokens from popup
@@ -31,6 +50,7 @@ export default function Diag() {
       if (e?.data?.aps_connected) {
         if (e.data.aps_at) localStorage.setItem("aps_at", e.data.aps_at);
         if (e.data.aps_rt) localStorage.setItem("aps_rt", e.data.aps_rt);
+        console.log("[APS] postMessage received; tokens saved. Reloading…");
         window.location.reload();
       }
     };
@@ -126,12 +146,33 @@ export default function Diag() {
           </span>
         )}
         {!out?.apsStatus?.body?.connected && (
-          <button 
-            onClick={connectAPS}
-            style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#0066cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
-          >
-            Connect Autodesk
-          </button>
+          <>
+            <button 
+              onClick={connectAPS}
+              style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#0066cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
+            >
+              Connect Autodesk
+            </button>
+            <div style={{ marginTop: 8, display: "flex", gap: "8px", alignItems: "center" }}>
+              <input 
+                placeholder="paste access_token (dev)" 
+                value={manualAT} 
+                onChange={e => setManualAT(e.target.value)}
+                style={{ border: "1px solid #ccc", padding: "2px 4px", fontSize: "12px", width: "200px" }}
+              />
+              <button 
+                onClick={() => { 
+                  if (manualAT) { 
+                    localStorage.setItem("aps_at", manualAT); 
+                    window.location.reload(); 
+                  }
+                }}
+                style={{ padding: "2px 6px", backgroundColor: "#00aa44", color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "12px" }}
+              >
+                Save AT
+              </button>
+            </div>
+          </>
         )}
       </div>
 

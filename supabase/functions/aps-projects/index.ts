@@ -10,6 +10,16 @@ const cors = {
   "access-control-allow-credentials": "true",
 };
 
+function readAT(req: Request) {
+  const auth = req.headers.get("authorization") || "";
+  if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return req.headers.get("x-aps-at") || null;
+}
+
+function readRT(req: Request) {
+  return req.headers.get("x-aps-rt") || null;
+}
+
 function getCookie(cookies: string, name: string) {
   return (`; ${cookies}`).split(`; ${name}=`).pop()?.split(";")[0];
 }
@@ -63,8 +73,8 @@ Deno.serve(async (req) => {
   if (!hubId) return j({ ok: false, code: "missing_hub_id" }, 400);
 
   // Check headers first, then cookies
-  let accessToken = req.headers.get("x-aps-at");
-  let refreshToken = req.headers.get("x-aps-rt");
+  let accessToken = readAT(req);
+  let refreshToken = readRT(req);
   const cookies = req.headers.get("cookie") ?? "";
   let tokenSource = "none";
   
