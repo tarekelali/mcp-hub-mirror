@@ -2,10 +2,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { readSessionCookie } from "../_shared/cookies.ts";
 import { WEB_ORIGIN } from "../_shared/env.ts";
-import { cors } from "../_shared/cors.ts";
+import { authCors } from "../_shared/cors.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
-const CORS = cors(ORIGIN);
+const CORS = authCors(ORIGIN);
 
 function readAT(req: Request): string | null {
   const auth = req.headers.get("authorization") || "";
@@ -30,15 +30,12 @@ Deno.serve(async (req) => {
   const cookieAt = getCookie(cookies, "aps_at");
   const cookieRt = getCookie(cookies, "aps_rt");
   
-  // Log what we're receiving for debugging
-  console.log("[auth-aps-status] Headers:", { 
-    "authorization": req.headers.get("authorization") ? "present" : "missing",
-    "x-aps-at": req.headers.get("x-aps-at") ? "present" : "missing",
-    "x-aps-rt": req.headers.get("x-aps-rt") ? "present" : "missing"
-  });
-  console.log("[auth-aps-status] Cookies:", {
-    "aps_at": cookieAt ? "present" : "missing", 
-    "aps_rt": cookieRt ? "present" : "missing"
+  // Log token lengths only for debugging
+  console.log("[auth-aps-status] Token lengths:", { 
+    "at_header": hdrAT ? hdrAT.length : 0,
+    "rt_header": hdrRT ? hdrRT.length : 0,
+    "at_cookie": cookieAt ? cookieAt.length : 0,
+    "rt_cookie": cookieRt ? cookieRt.length : 0
   });
   
   let via = "none";

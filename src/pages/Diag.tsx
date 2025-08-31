@@ -7,21 +7,87 @@ const FNS =
     : "https://kuwrhanybqhfnwvshedl.functions.supabase.co");
 const PILOT_CMP = "11111111-1111-1111-1111-111111111111"; // seeded CMP id
 
+// Token Manager for silent refresh and retry logic
+class TokenManager {
+  private refreshTimer: number | null = null;
+  
+  scheduleRefresh(expiresIn: number) {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+    
+    // Schedule refresh 60 seconds before expiry
+    const refreshDelay = Math.max(60000, (expiresIn * 1000) - 60000);
+    this.refreshTimer = window.setTimeout(() => {
+      this.refreshTokens();
+    }, refreshDelay);
+    
+    console.log(`[TokenManager] Refresh scheduled in ${refreshDelay}ms`);
+  }
+  
+  async refreshTokens(): Promise<boolean> {
+    try {
+      const response = await fetch(`${FNS}/auth-aps-refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-APS-RT": localStorage.getItem("aps_rt") || "",
+        },
+      });
+      
+      if (!response.ok) {
+        console.error("[TokenManager] Refresh failed:", response.status);
+        return false;
+      }
+      
+      const data = await response.json();
+      if (data.access_token) {
+        localStorage.setItem("aps_at", data.access_token);
+        this.scheduleRefresh(data.expires_in || 3600);
+        console.log("[TokenManager] Tokens refreshed successfully");
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("[TokenManager] Refresh error:", error);
+      return false;
+    }
+  }
+  
+  cleanup() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+}
+
 export default function Diag() {
   const [out, setOut] = React.useState<any>({});
   const [debugOut, setDebugOut] = React.useState<any>(null);
-  const [manualAT, setManualAT] = React.useState("");
   const [ready, setReady] = React.useState(false);
+  const [tokenManager] = React.useState(() => new TokenManager());
+
+  // Cleanup token manager on unmount
+  React.useEffect(() => {
+    return () => tokenManager.cleanup();
+  }, [tokenManager]);
 
   // 1) Parse tokens from URL query and hash BEFORE any fetch runs
   React.useLayoutEffect(() => {
     let updated = false;
+    let newExpiresIn: number | null = null;
 
     // Query first
     const q = new URLSearchParams(window.location.search);
     const qAT = q.get("aps_at");
     const qRT = q.get("aps_rt");
-    if (qAT) { localStorage.setItem("aps_at", qAT); updated = true; }
+    if (qAT) { 
+      localStorage.setItem("aps_at", qAT); 
+      updated = true;
+      newExpiresIn = 3600; // Default to 1 hour if not specified
+    }
     if (qRT) { localStorage.setItem("aps_rt", qRT); updated = true; }
     if (qAT || qRT) {
       const url = new URL(window.location.href);
@@ -36,7 +102,11 @@ export default function Diag() {
       const sp = new URLSearchParams(raw);
       const hAT = sp.get("aps_at") || sp.get("at");
       const hRT = sp.get("aps_rt") || sp.get("rt");
-      if (hAT) { localStorage.setItem("aps_at", hAT); updated = true; }
+      if (hAT) { 
+        localStorage.setItem("aps_at", hAT); 
+        updated = true;
+        newExpiresIn = 3600; // Default to 1 hour if not specified
+      }
       if (hRT) { localStorage.setItem("aps_rt", hRT); updated = true; }
       if (hAT || hRT) {
         history.replaceState(null, "", window.location.pathname); // strip hash
@@ -44,8 +114,13 @@ export default function Diag() {
       }
     }
 
+    // Schedule token refresh if we received new tokens
+    if (newExpiresIn) {
+      tokenManager.scheduleRefresh(newExpiresIn);
+    }
+
     setReady(true);
-  }, []);
+  }, [tokenManager]);
 
   const getHeaders = (): Record<string, string> => {
     const hdrs: Record<string, string> = {};
@@ -56,8 +131,7 @@ export default function Diag() {
       hdrs["X-APS-AT"] = at;                  // custom, server also accepts
     }
     if (rt) hdrs["X-APS-RT"] = rt;
-    console.log("[DEBUG] aps_at length:", at ? at.length : 0, "aps_rt length:", rt ? rt.length : 0);
-    console.log("[DEBUG] Headers being sent:", Object.keys(hdrs));
+    console.log("[DEBUG] AT length:", at ? at.length : 0, "RT length:", rt ? rt.length : 0);
     return hdrs;
   };
 
@@ -79,10 +153,25 @@ export default function Diag() {
     if (!ready) return;
     
     (async () => {
-      const j = async (u: string, init?: RequestInit) => {
+      const j = async (u: string, init?: RequestInit): Promise<any> => {
         try {
           const headers = { ...getHeaders(), ...(init?.headers || {}) };
           const r = await fetch(u, { ...init, headers, credentials: "include" as RequestCredentials });
+          
+          // Handle 401 with one-shot retry for APS endpoints
+          if (r.status === 401 && (u.includes('/aps-') || u.includes('/auth-aps-'))) {
+            console.log("[Retry] 401 detected, attempting token refresh...");
+            const refreshed = await tokenManager.refreshTokens();
+            if (refreshed) {
+              // Retry with fresh tokens
+              const newHeaders = { ...getHeaders(), ...(init?.headers || {}) };
+              const retryR = await fetch(u, { ...init, headers: newHeaders, credentials: "include" as RequestCredentials });
+              const retryTxt = await retryR.text();
+              try { return { ok: retryR.ok, status: retryR.status, body: JSON.parse(retryTxt) }; }
+              catch { return { ok: retryR.ok, status: retryR.status, body: retryTxt }; }
+            }
+          }
+          
           const txt = await r.text();
           try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
           catch { return { ok: r.ok, status: r.status, body: txt }; }
@@ -101,13 +190,15 @@ export default function Diag() {
 
       // If we have hubs, also fetch projects for the first hub
       if (initialData.hubs && typeof initialData.hubs === 'object' && initialData.hubs.body?.items?.length > 0) {
-        const firstHubId = initialData.hubs.body.items[0].id;
-        initialData.projects = await j(`${FNS}/aps-projects?hub_id=${firstHubId}`, { credentials: "include" });
+        const firstHub = initialData.hubs.body.items[0];
+        const firstHubId = firstHub.id;
+        initialData.projects = await j(`${FNS}/aps-projects?hub_id=${firstHubId}&limit=50`, { credentials: "include" });
+        initialData.firstHubName = firstHub.attributes?.name || firstHubId;
       }
 
       setOut(initialData);
     })();
-  }, [ready]);
+  }, [ready, tokenManager]);
 
   // 3) Same-tab connect
   const connectAPS = () => {
@@ -127,6 +218,30 @@ export default function Diag() {
     };
     const result = await j(`${FNS}/auth-aps-debug`, { credentials: "include" });
     setDebugOut(result);
+  };
+
+  const openSampleModel = async () => {
+    if (!out?.projects?.body?.sample?.length) {
+      alert("No sample projects available");
+      return;
+    }
+    
+    try {
+      // Get viewer token
+      const viewerResult = await fetch(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" });
+      const viewerData = await viewerResult.json();
+      
+      if (!viewerData.access_token) {
+        alert("Failed to get viewer token");
+        return;
+      }
+      
+      const sampleProject = out.projects.body.sample[0];
+      alert(`Sample model flow would open project: ${sampleProject.name} (${sampleProject.country}/${sampleProject.unit}/${sampleProject.city})\nViewer token ready: ${viewerData.access_token.substring(0, 20)}...`);
+    } catch (error) {
+      console.error("Sample model error:", error);
+      alert("Failed to prepare sample model");
+    }
   };
 
   const clearAPS = () => {
@@ -162,25 +277,6 @@ export default function Diag() {
             >
               Connect Autodesk
             </button>
-            <div style={{ marginTop: 8, display: "flex", gap: "8px", alignItems: "center" }}>
-              <input 
-                placeholder="paste access_token (dev)" 
-                value={manualAT} 
-                onChange={e => setManualAT(e.target.value)}
-                style={{ border: "1px solid #ccc", padding: "2px 4px", fontSize: "12px", width: "200px" }}
-              />
-              <button 
-                onClick={() => { 
-                  if (manualAT) { 
-                    localStorage.setItem("aps_at", manualAT); 
-                    window.location.reload(); 
-                  }
-                }}
-                style={{ padding: "2px 6px", backgroundColor: "#00aa44", color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "12px" }}
-              >
-                Save AT
-              </button>
-            </div>
           </>
         )}
       </div>
@@ -188,15 +284,30 @@ export default function Diag() {
       {/* Hubs Count */}
       <div style={{ marginBottom: 16 }}>
         <strong>Hubs count:</strong> {Array.isArray(out?.hubs?.body?.items) ? out.hubs.body.items.length : 0}
+        {out?.firstHubName && (
+          <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
+            Hub: {out.firstHubName} ({out?.hubs?.body?.items?.[0]?.id})
+          </div>
+        )}
       </div>
 
       {/* Projects Count */}
       <div style={{ marginBottom: 16 }}>
         <strong>Projects count:</strong> {Array.isArray(out?.projects?.body?.items) ? out.projects.body.items.length : 0}
-        {out?.projects?.body?.items?.length > 0 && (
+        {out?.projects?.body?.total_estimate && (
+          <span style={{ marginLeft: 8, color: "#666" }}>
+            (showing {out.projects.body.items.length} of {out.projects.body.total_estimate} total)
+          </span>
+        )}
+        {out?.firstHubName && (
           <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
-            Sample projects: {out.projects.body.items.slice(0, 3).map((p: any) => 
-              `${p.name} (${p.country || 'Unknown'}/${p.unit || 'N/A'}/${p.city || 'N/A'})`
+            Hub: {out.firstHubName}
+          </div>
+        )}
+        {out?.projects?.body?.sample?.length > 0 && (
+          <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
+            Sample: {out.projects.body.sample.map((p: any) => 
+              `${p.name} (${p.country || 'N/A'}/${p.unit || 'N/A'}/${p.city || 'N/A'})`
             ).join(', ')}
           </div>
         )}
@@ -232,6 +343,14 @@ export default function Diag() {
         >
           Clear APS
         </button>
+        {out?.projects?.body?.sample?.length > 0 && (
+          <button 
+            onClick={openSampleModel}
+            style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#9944cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
+          >
+            Open sample model
+          </button>
+        )}
         {debugOut && (
           <pre style={{ marginTop: 8, padding: 8, backgroundColor: "#f5f5f5", borderRadius: 4, fontSize: "12px" }}>
             {JSON.stringify(debugOut, null, 2)}
