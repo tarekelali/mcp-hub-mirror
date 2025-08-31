@@ -71,7 +71,14 @@ Deno.serve(async (req) => {
 
   const APP = WEB_ORIGIN + "/_diag";
   const hash = `#aps_at=${encodeURIComponent(t.access_token)}&aps_rt=${encodeURIComponent(t.refresh_token || "")}`;
+  const query = `?aps_at=${encodeURIComponent(t.access_token)}&aps_rt=${encodeURIComponent(t.refresh_token || "")}`;
 
+  // 1) If aps_return cookie present:
+  if (returnTo) {
+    return html(`<script>location.replace(${JSON.stringify(returnTo)} + ${JSON.stringify(hash)});</script>`, { "Set-Cookie": setCookies, ...CORS });
+  }
+
+  // 2) Popup path (opener) – keep postMessage + hash bridge:
   return html(`
     <script>
       (function () {
@@ -86,10 +93,11 @@ Deno.serve(async (req) => {
             } catch (e) { /* ignore */ }
             window.close();
           } else {
-            location.replace(${JSON.stringify(APP)} + ${JSON.stringify(hash)});
+            // 3) Same-tab path: send **query** (most robust) and also keep hash for safety
+            location.replace(${JSON.stringify(APP)} + ${JSON.stringify(query)});
           }
         } catch (e) {
-          location.replace(${JSON.stringify(APP)} + ${JSON.stringify(hash)});
+          location.replace(${JSON.stringify(APP)} + ${JSON.stringify(query)});
         }
       })();
     </script>

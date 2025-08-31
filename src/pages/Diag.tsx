@@ -13,24 +13,41 @@ export default function Diag() {
   const [manualAT, setManualAT] = React.useState("");
   const [ready, setReady] = React.useState(false);
 
-  // 1) Parse tokens from URL hash BEFORE any fetch runs
+  // 1) Parse tokens from URL query and hash BEFORE any fetch runs
   React.useLayoutEffect(() => {
+    let updated = false;
+
+    // Query first
+    const q = new URLSearchParams(window.location.search);
+    const qAT = q.get("aps_at");
+    const qRT = q.get("aps_rt");
+    if (qAT) { localStorage.setItem("aps_at", qAT); updated = true; }
+    if (qRT) { localStorage.setItem("aps_rt", qRT); updated = true; }
+    if (qAT || qRT) {
+      const url = new URL(window.location.href);
+      url.search = ""; // remove query
+      history.replaceState(null, "", url.toString());
+      console.log("[APS] query tokens saved");
+    }
+
+    // Hash next
     const raw = window.location.hash.slice(1);
     if (raw) {
       const sp = new URLSearchParams(raw);
-      const at = sp.get("aps_at") || sp.get("at");
-      const rt = sp.get("aps_rt") || sp.get("rt");
-      if (at) localStorage.setItem("aps_at", at);
-      if (rt) localStorage.setItem("aps_rt", rt);
-      if (at || rt) {
-        history.replaceState(null, "", window.location.pathname);
-        console.log("[APS] URL hash tokens saved");
+      const hAT = sp.get("aps_at") || sp.get("at");
+      const hRT = sp.get("aps_rt") || sp.get("rt");
+      if (hAT) { localStorage.setItem("aps_at", hAT); updated = true; }
+      if (hRT) { localStorage.setItem("aps_rt", hRT); updated = true; }
+      if (hAT || hRT) {
+        history.replaceState(null, "", window.location.pathname); // strip hash
+        console.log("[APS] hash tokens saved");
       }
     }
+
     setReady(true);
   }, []);
 
-  const getHeaders = () => {
+  const getHeaders = (): Record<string, string> => {
     const hdrs: Record<string, string> = {};
     const at = localStorage.getItem("aps_at") || "";
     const rt = localStorage.getItem("aps_rt") || "";

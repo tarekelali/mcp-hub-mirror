@@ -23,15 +23,12 @@ function getCookie(header: string | null, name: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  
-  let accessToken = readAT(req);
-  let refreshToken = readRT(req);
+
+  const hdrAT = readAT(req);
+  const hdrRT = readRT(req);
   const cookies = req.headers.get("cookie") ?? "";
   const cookieAt = getCookie(cookies, "aps_at");
   const cookieRt = getCookie(cookies, "aps_rt");
-
-  accessToken ||= cookieAt || null;
-  refreshToken ||= cookieRt || null;
   
   // Log what we're receiving for debugging
   console.log("[auth-aps-status] Headers:", { 
@@ -47,8 +44,11 @@ Deno.serve(async (req) => {
   let via = "none";
   let connected = false;
   
-  if (accessToken || refreshToken) {
-    via = (readAT(req) || readRT(req)) ? "header" : "cookie";
+  if (hdrAT || hdrRT) {
+    via = "header";
+    connected = true;
+  } else if (cookieAt || cookieRt) {
+    via = "cookie"; 
     connected = true;
   } else {
     // Fallback to session check
@@ -66,9 +66,9 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({ 
     connected,
     via, 
-    has_at_cookie: !!cookieAt, 
-    has_rt_cookie: !!cookieRt,
-    has_at_header: !!(req.headers.get("x-aps-at") || (req.headers.get("authorization") || "").startsWith("Bearer ")),
-    has_rt_header: !!req.headers.get("x-aps-rt")
+    has_at_header: !!hdrAT,
+    has_rt_header: !!hdrRT,
+    has_at_cookie: !!cookieAt,
+    has_rt_cookie: !!cookieRt
   }), { headers: { "content-type":"application/json", ...CORS } });
 });
