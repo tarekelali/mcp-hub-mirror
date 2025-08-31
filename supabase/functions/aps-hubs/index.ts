@@ -1,15 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN, APS_SCOPES_3L } from "../_shared/env.ts";
+import { cors } from "../_shared/cors.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
 const READ_ONLY = (Deno.env.get("READ_ONLY_MODE") ?? "true") === "true";
-
-const cors = {
-  "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type, x-aps-at, x-aps-rt",
-  "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-credentials": "true",
-};
+const CORS = cors(ORIGIN);
 
 function readAT(req: Request): string | null {
   const auth = req.headers.get("authorization") || "";
@@ -31,14 +26,14 @@ function j(body: unknown, status = 200, extraHeaders: HeadersInit = {}) {
     headers: {
       "content-type": "application/json",
       "cache-control": "no-store",
-      ...cors,
+      ...CORS,
       ...extraHeaders,
     },
   });
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "GET") return j({ ok: false, code: "method_not_allowed" }, 405);
 
   // Read-only guard (belt & braces). We never write to ACC anyway.

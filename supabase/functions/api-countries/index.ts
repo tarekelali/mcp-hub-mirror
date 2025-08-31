@@ -5,11 +5,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-};
+import { cors } from "../_shared/cors.ts";
+
+const WEB_ORIGIN = Deno.env.get("WEB_ORIGIN") || "*";
+const corsHeaders = cors(WEB_ORIGIN);
 
 type CountryRow = { code: string; name: string };
 type CmpRow = { id: string; name: string; country_code: string; published: boolean };

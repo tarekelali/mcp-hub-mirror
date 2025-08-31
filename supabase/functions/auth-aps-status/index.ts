@@ -2,14 +2,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { readSessionCookie } from "../_shared/cookies.ts";
 import { WEB_ORIGIN } from "../_shared/env.ts";
+import { cors } from "../_shared/cors.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
-const cors = {
-  "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type, x-aps-at, x-aps-rt",
-  "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-credentials": "true",
-};
+const CORS = cors(ORIGIN);
 
 function readAT(req: Request): string | null {
   const auth = req.headers.get("authorization") || "";
@@ -26,7 +22,7 @@ function getCookie(header: string | null, name: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   
   let accessToken = readAT(req);
   let refreshToken = readRT(req);
@@ -74,5 +70,5 @@ Deno.serve(async (req) => {
     has_rt_cookie: !!cookieRt,
     has_at_header: !!(req.headers.get("x-aps-at") || (req.headers.get("authorization") || "").startsWith("Bearer ")),
     has_rt_header: !!req.headers.get("x-aps-rt")
-  }), { headers: { "content-type":"application/json", ...cors } });
+  }), { headers: { "content-type":"application/json", ...CORS } });
 });

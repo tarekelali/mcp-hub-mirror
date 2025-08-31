@@ -1,24 +1,20 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN } from "../_shared/env.ts";
+import { cors } from "../_shared/cors.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
-const cors = {
-  "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
-  "access-control-allow-methods": "GET, OPTIONS",
-  "access-control-allow-credentials": "true",
-};
+const CORS = cors(ORIGIN);
 
 function getCookie(header: string| null, name: string) {
   return (`; ${header ?? ""}`).split(`; ${name}=`).pop()?.split(";")[0];
 }
 
 function html(body: string, extraHeaders: HeadersInit = {}) {
-  return new Response(body, { headers: { "content-type": "text/html", ...cors, ...extraHeaders } });
+  return new Response(body, { headers: { "content-type": "text/html", ...CORS, ...extraHeaders } });
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -70,8 +66,11 @@ Deno.serve(async (req) => {
         })();
       </script>
       Redirecting…
-    `, { "Set-Cookie": setCookies, ...cors });
+    `, { "Set-Cookie": setCookies, ...CORS });
   }
+
+  const APP = WEB_ORIGIN + "/_diag";
+  const hash = `#aps_at=${encodeURIComponent(t.access_token)}&aps_rt=${encodeURIComponent(t.refresh_token || "")}`;
 
   return html(`
     <script>
@@ -80,22 +79,20 @@ Deno.serve(async (req) => {
         var rt = ${JSON.stringify(t.refresh_token || "")};
         var exp = ${JSON.stringify(t.expires_in || 3600)};
         try {
-          localStorage.setItem("aps_connected","1");
-          // 1) postMessage (primary path)
           if (window.opener) {
             window.opener.postMessage({ aps_connected: true, aps_at: at, aps_rt: rt, expires_in: exp }, "*");
-          }
-          // 2) URL-hash bridge (fallback; works even if postMessage is dropped)
-          if (window.opener) {
-            try {
-              window.opener.location.href = ${JSON.stringify(WEB_ORIGIN)} + "/_diag#aps_at=" + encodeURIComponent(at) + "&aps_rt=" + encodeURIComponent(rt);
+            try { 
+              window.opener.location.href = ${JSON.stringify(APP)} + ${JSON.stringify(hash)}; 
             } catch (e) { /* ignore */ }
+            window.close();
+          } else {
+            location.replace(${JSON.stringify(APP)} + ${JSON.stringify(hash)});
           }
-        } finally {
-          window.close();
+        } catch (e) {
+          location.replace(${JSON.stringify(APP)} + ${JSON.stringify(hash)});
         }
       })();
     </script>
-    Connected. You can close this window.
-  `, { "Set-Cookie": setCookies, ...cors });
+    Redirecting…
+  `, { "Set-Cookie": setCookies, ...CORS });
 });

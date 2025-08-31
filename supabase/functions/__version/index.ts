@@ -1,15 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN } from "../_shared/env.ts";
+import { cors } from "../_shared/cors.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
-const cors = {
-  "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
-  "access-control-allow-methods": "GET, OPTIONS",
-};
+const CORS = cors(ORIGIN);
 
 Deno.serve((req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   const buildTimestamp = new Date().toISOString(); // Current deployment time
   const gitSha = Deno.env.get("GIT_SHA") || "unknown"; // Git SHA if available
@@ -26,6 +23,6 @@ Deno.serve((req) => {
       WEB_ORIGIN: WEB_ORIGIN || "MISSING"
     }
   }), {
-    headers: { "content-type": "application/json", ...cors }
+    headers: { "content-type": "application/json", ...CORS }
   });
 });
