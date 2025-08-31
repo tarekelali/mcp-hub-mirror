@@ -6,19 +6,19 @@ import { WEB_ORIGIN } from "../_shared/env.ts";
 const ORIGIN = WEB_ORIGIN || "*";
 const cors = {
   "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
+  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type, x-aps-at, x-aps-rt",
   "access-control-allow-methods": "GET, POST, OPTIONS",
   "access-control-allow-credentials": "true",
 };
 
-function readAT(req: Request) {
+function readAT(req: Request): string | null {
   const auth = req.headers.get("authorization") || "";
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
-  return req.headers.get("x-aps-at") || null;
+  return req.headers.get("x-aps-at");
 }
 
-function readRT(req: Request) {
-  return req.headers.get("x-aps-rt") || null;
+function readRT(req: Request): string | null {
+  return req.headers.get("x-aps-rt");
 }
 
 function getCookie(header: string | null, name: string) {
@@ -34,8 +34,8 @@ Deno.serve(async (req) => {
   const cookieAt = getCookie(cookies, "aps_at");
   const cookieRt = getCookie(cookies, "aps_rt");
 
-  if (!accessToken) accessToken = cookieAt;
-  if (!refreshToken) refreshToken = cookieRt;
+  accessToken ||= cookieAt || null;
+  refreshToken ||= cookieRt || null;
   
   // Log what we're receiving for debugging
   console.log("[auth-aps-status] Headers:", { 

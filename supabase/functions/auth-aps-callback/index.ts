@@ -50,14 +50,28 @@ Deno.serve(async (req) => {
   }
   const t = await tokenRes.json();
 
+  const returnTo = getCookie(cookies, "aps_return");
+
   const setCookies = [
-    // short-lived access token
     `aps_at=${t.access_token}; Path=/; Secure; HttpOnly; SameSite=None; Max-Age=${Math.max(60, (t.expires_in ?? 3600) - 60)}`,
-    // refresh token (lives longer; use conservative TTL if none provided)
     t.refresh_token ? `aps_rt=${t.refresh_token}; Path=/; Secure; HttpOnly; SameSite=None; Max-Age=2592000` : "",
-    // clear one-time state
+    `aps_return=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=None`,
     `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
   ].filter(Boolean).join(", ");
+
+  if (returnTo) {
+    return html(`
+      <script>
+        (function () {
+          var at = ${JSON.stringify(t.access_token)};
+          var rt = ${JSON.stringify(t.refresh_token || "")};
+          var url = ${JSON.stringify(returnTo)} + "#aps_at=" + encodeURIComponent(at) + "&aps_rt=" + encodeURIComponent(rt);
+          location.replace(url);
+        })();
+      </script>
+      Redirecting…
+    `, { "Set-Cookie": setCookies, ...cors });
+  }
 
   return html(`
     <script>

@@ -15,6 +15,9 @@ Deno.serve((req) => {
     return new Response(JSON.stringify({ ok:false, code:"method_not_allowed" }), { status:405, headers: { "content-type":"application/json", ...cors }});
   }
 
+  const url = new URL(req.url);
+  const returnTo = url.searchParams.get("return");
+  
   const state = crypto.randomUUID();
   const authUrl = new URL("https://developer.api.autodesk.com/authentication/v2/authorize");
   authUrl.searchParams.set("response_type", "code");
@@ -23,16 +26,17 @@ Deno.serve((req) => {
   authUrl.searchParams.set("scope", APS_SCOPES_3L);
   authUrl.searchParams.set("state", state);
 
-  // IMPORTANT: cookies must be cross-site friendly for the popup:
-  // Secure; HttpOnly; SameSite=None; Path=/
+  const stateCookie = `aps_state=${state}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`;
+  const returnCookie = returnTo 
+    ? `aps_return=${encodeURIComponent(returnTo)}; Path=/; Max-Age=600; Secure; HttpOnly; SameSite=None`
+    : "";
+
+  const setCookieHeader = [stateCookie, returnCookie].filter(Boolean).join(", ");
+  
   const headers = new Headers({
     Location: authUrl.toString(),
     ...cors,
-    "Set-Cookie": [
-      `aps_state=${state}; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
-      // (optional) remember where we started from
-      `aps_o=1; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=600`,
-    ].join(", "),
+    "Set-Cookie": setCookieHeader,
   });
 
   return new Response(null, { status: 302, headers });

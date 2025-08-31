@@ -11,25 +11,11 @@ export default function Diag() {
   const [out, setOut] = React.useState<any>({});
   const [debugOut, setDebugOut] = React.useState<any>(null);
   const [manualAT, setManualAT] = React.useState("");
+  const [ready, setReady] = React.useState(false);
 
-  const getHeaders = () => {
-    const hdrs: Record<string, string> = {};
-    const at = localStorage.getItem("aps_at") || "";
-    const rt = localStorage.getItem("aps_rt") || "";
-    if (at) {
-      hdrs["X-APS-AT"] = at;                // our custom header
-      hdrs["Authorization"] = `Bearer ${at}`; // standard Bearer (server will accept either)
-    }
-    if (rt) hdrs["X-APS-RT"] = rt;
-    // helpful debug
-    console.log("[DEBUG] aps_at length:", at ? at.length : 0, "aps_rt length:", rt ? rt.length : 0);
-    console.log("[DEBUG] Headers being sent:", Object.keys(hdrs));
-    return hdrs;
-  };
-
-  // URL-hash bridge: parse tokens from URL hash
-  React.useEffect(() => {
-    const raw = window.location.hash.replace(/^#/, "");
+  // 1) Parse tokens from URL hash BEFORE any fetch runs
+  React.useLayoutEffect(() => {
+    const raw = window.location.hash.slice(1);
     if (raw) {
       const sp = new URLSearchParams(raw);
       const at = sp.get("aps_at") || sp.get("at");
@@ -37,15 +23,28 @@ export default function Diag() {
       if (at) localStorage.setItem("aps_at", at);
       if (rt) localStorage.setItem("aps_rt", rt);
       if (at || rt) {
-        // strip hash so it doesn't linger in address bar
         history.replaceState(null, "", window.location.pathname);
-        console.log("[APS] URL hash tokens parsed and saved");
+        console.log("[APS] URL hash tokens saved");
       }
     }
+    setReady(true);
   }, []);
 
+  const getHeaders = () => {
+    const hdrs: Record<string, string> = {};
+    const at = localStorage.getItem("aps_at") || "";
+    const rt = localStorage.getItem("aps_rt") || "";
+    if (at) {
+      hdrs["Authorization"] = `Bearer ${at}`; // standard
+      hdrs["X-APS-AT"] = at;                  // custom, server also accepts
+    }
+    if (rt) hdrs["X-APS-RT"] = rt;
+    console.log("[DEBUG] aps_at length:", at ? at.length : 0, "aps_rt length:", rt ? rt.length : 0);
+    console.log("[DEBUG] Headers being sent:", Object.keys(hdrs));
+    return hdrs;
+  };
+
   React.useEffect(() => {
-    // Listen for tokens from popup
     const handleMessage = (e: MessageEvent) => {
       if (e?.data?.aps_connected) {
         if (e.data.aps_at) localStorage.setItem("aps_at", e.data.aps_at);
@@ -55,17 +54,23 @@ export default function Diag() {
       }
     };
     window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
+  // 2) Run diagnostics only after ready=true so tokens are available
+  React.useEffect(() => {
+    if (!ready) return;
+    
     (async () => {
-  const j = async (u: string, init?: RequestInit) => {
-    try {
-      const headers = { ...getHeaders(), ...(init?.headers || {}) };
-      const r = await fetch(u, { ...init, headers });
-      const txt = await r.text();
-      try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
-      catch { return { ok: r.ok, status: r.status, body: txt }; }
-    } catch (e) { return String(e); }
-  };
+      const j = async (u: string, init?: RequestInit) => {
+        try {
+          const headers = { ...getHeaders(), ...(init?.headers || {}) };
+          const r = await fetch(u, { ...init, headers, credentials: "include" as RequestCredentials });
+          const txt = await r.text();
+          try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
+          catch { return { ok: r.ok, status: r.status, body: txt }; }
+        } catch (e) { return String(e); }
+      };
 
       const initialData: any = {
         countries:   await j(`${FNS}/api-countries/api/countries`),                       // no credentials
@@ -85,25 +90,12 @@ export default function Diag() {
 
       setOut(initialData);
     })();
+  }, [ready]);
 
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
-
+  // 3) Same-tab connect
   const connectAPS = () => {
-    const w = window.open(
-      `${FNS}/auth-aps-start`,
-      "aps_oauth",
-      "width=520,height=680,menubar=no,status=no"
-    );
-    // listen for postMessage from callback
-    const onMsg = (e: MessageEvent) => {
-      if (e?.data?.aps_connected) {
-        window.removeEventListener("message", onMsg);
-        // re-run diagnostics
-        window.location.reload();
-      }
-    };
-    window.addEventListener("message", onMsg);
+    const ret = `${window.location.origin}/_diag`;
+    window.location.href = `${FNS}/auth-aps-start?return=${encodeURIComponent(ret)}`;
   };
 
   const debugAPS = async () => {
