@@ -55,6 +55,36 @@ export type Database = {
           },
         ]
       }
+      aps_metrics: {
+        Row: {
+          count: number
+          created_at: string
+          day: string
+          function_name: string
+          id: string
+          status_class: string
+          updated_at: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          day?: string
+          function_name: string
+          id?: string
+          status_class: string
+          updated_at?: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          day?: string
+          function_name?: string
+          id?: string
+          status_class?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cmps: {
         Row: {
           acc_folder_id: string | null
