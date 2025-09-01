@@ -42,7 +42,7 @@ export function AppList({
                 cursor: "pointer"
               }}
             >
-              View CMPs
+              View Projects
             </button>
           </div>
         </div>

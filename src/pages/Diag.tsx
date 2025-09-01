@@ -256,6 +256,38 @@ export default function Diag() {
         )}
       </div>
 
+      {/* Catalog Projects Count */}
+      <div style={{ marginBottom: 16 }}>
+        <strong>Catalog projects:</strong> {out?.countries?.body?.reduce((sum: number, country: any) => sum + (country.total || 0), 0) || 0}
+        <button 
+          onClick={async () => {
+            try {
+              const response = await tokenManager.retryRequest(`${FNS}/acc-projects-sync`, { 
+                method: 'POST',
+                credentials: 'include' 
+              });
+              const result = await response.json();
+              if (result.success) {
+                alert(`Sync started: Job ${result.jobId}`);
+              } else {
+                alert(`Sync failed: ${result.error}`);
+              }
+            } catch (error) {
+              alert(`Sync error: ${error}`);
+            }
+          }}
+          style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#6600cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
+        >
+          Trigger Ingest
+        </button>
+        {out?.countries?.body?.length > 0 && (
+          <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
+            Countries: {out.countries.body.slice(0, 3).map((c: any) => `${c.name} (${c.total})`).join(', ')}
+            {out.countries.body.length > 3 && ` and ${out.countries.body.length - 3} more`}
+          </div>
+        )}
+      </div>
+
       {/* Version & Environment Status */}
       <div style={{ marginBottom: 16 }}>
         <strong>Environment Status:</strong>

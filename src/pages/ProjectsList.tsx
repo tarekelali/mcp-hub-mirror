@@ -5,100 +5,71 @@ import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Search, MapPin, Building2, Filter, Loader2 } from "lucide-react";
 import { tokenManager } from "../lib/tokenManager";
+import { getProjects, Project, ProjectsResponse } from "../lib/api";
 
 const FNS = import.meta.env.VITE_FUNCTIONS_BASE || 
   (window.location.hostname === "localhost"
     ? "http://127.0.0.1:54321"
     : "https://kuwrhanybqhfnwvshedl.functions.supabase.co");
 
-interface Project {
-  project_id: string;
-  name_raw: string;
-  country_name?: string;
-  country_code?: string;
-  unit_code?: string;
-  unit_number?: number;
-  city?: string;
-  parse_confidence: number;
-  ingested_at: string;
-}
-
-interface ProjectsResponse {
-  projects: Project[];
-  pagination: {
-    offset: number;
-    limit: number;
-    total: number;
-    hasMore: boolean;
-  };
-  filters: {
-    country?: string;
-    search?: string;
-  };
-}
+// Interfaces moved to api.ts
 
 export default function ProjectsList() {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [countryFilter, setCountryFilter] = React.useState("");
-  const [pagination, setPagination] = React.useState({
-    offset: 0,
-    limit: 50,
-    total: 0,
-    hasMore: false
-  });
+
+  // Get country filter from URL parameters
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const country = params.get('country');
+    if (country) {
+      setCountryFilter(country.toUpperCase());
+    }
+  }, []);
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [hasMore, setHasMore] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const fetchProjects = React.useCallback(async (offset = 0, reset = false) => {
+  const fetchProjects = React.useCallback(async (reset = false) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        limit: pagination.limit.toString(),
-        offset: offset.toString()
+      const data = await getProjects({
+        country: countryFilter || undefined,
+        search: searchQuery || undefined,
+        limit: 50,
+        offset: reset ? 0 : projects.length
       });
       
-      if (countryFilter) params.set("country", countryFilter);
-      if (searchQuery) params.set("q", searchQuery);
-
-      const response = await tokenManager.retryRequest(
-        `${FNS}/api-acc-projects?${params}`,
-        { credentials: "include" }
-      );
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data: ProjectsResponse = await response.json();
-      
       if (reset) {
-        setProjects(data.projects);
+        setProjects(data.items);
       } else {
-        setProjects(prev => [...prev, ...data.projects]);
+        setProjects(prev => [...prev, ...data.items]);
       }
       
-      setPagination(data.pagination);
+      setHasMore(data.has_more);
+      setTotalCount(data.total_count);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, countryFilter, pagination.limit]);
+  }, [searchQuery, countryFilter, projects.length]);
 
-  // Initial load
+  // Initial load and when filters change
   React.useEffect(() => {
-    fetchProjects(0, true);
+    fetchProjects(true);
   }, [searchQuery, countryFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchProjects(0, true);
+    fetchProjects(true);
   };
 
   const loadMore = () => {
-    if (pagination.hasMore && !loading) {
-      fetchProjects(pagination.offset + pagination.limit, false);
+    if (hasMore && !loading) {
+      fetchProjects(false);
     }
   };
 
@@ -121,7 +92,7 @@ export default function ProjectsList() {
       console.log("Refresh result:", result);
       
       // Refresh the current view
-      await fetchProjects(0, true);
+      await fetchProjects(true);
       
       alert(`Refresh completed: ${result.totalProcessed} projects processed`);
     } catch (error) {
@@ -181,7 +152,7 @@ export default function ProjectsList() {
         <div>
           <h1 className="text-3xl font-bold">ACC Projects</h1>
           <p className="text-muted-foreground">
-            {pagination.total.toLocaleString()} projects total
+            {totalCount.toLocaleString()} projects total
           </p>
         </div>
         <Button 
@@ -283,20 +254,20 @@ export default function ProjectsList() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Project ID: {project.project_id}</span>
-                        <span>
-                          Confidence: 
-                          <Badge 
-                            className={`ml-1 ${getConfidenceColor(project.parse_confidence)}`}
-                          >
-                            {Math.round(project.parse_confidence * 100)}%
-                          </Badge>
-                        </span>
-                        <span>
-                          Ingested: {new Date(project.ingested_at).toLocaleDateString()}
-                        </span>
-                      </div>
+                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                         <span>Project ID: {project.project_id}</span>
+                         <span>
+                           Confidence: 
+                           <Badge 
+                             className={`ml-1 ${getConfidenceColor(project.parse_confidence || 0)}`}
+                           >
+                             {Math.round((project.parse_confidence || 0) * 100)}%
+                           </Badge>
+                         </span>
+                         <span>
+                           Ingested: {new Date(project.ingested_at).toLocaleDateString()}
+                         </span>
+                       </div>
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -317,7 +288,7 @@ export default function ProjectsList() {
       </div>
 
       {/* Load More */}
-      {pagination.hasMore && (
+      {hasMore && (
         <div className="flex justify-center mt-6">
           <Button 
             onClick={loadMore} 
@@ -331,7 +302,7 @@ export default function ProjectsList() {
                 Loading...
               </>
             ) : (
-              `Load More (${projects.length} of ${pagination.total})`
+              `Load More (${projects.length} of ${totalCount})`
             )}
           </Button>
         </div>

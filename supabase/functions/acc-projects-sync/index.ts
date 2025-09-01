@@ -6,44 +6,58 @@ import { authCors } from "../_shared/cors.ts";
 const ORIGIN = WEB_ORIGIN || "*";
 const CORS = authCors(ORIGIN);
 
-// Enhanced country mapping from aps-projects function
+// Enhanced country mapping with IKEA-specific aliases
 const COUNTRY_MAP: Record<string,string> = {
-  Australia: "AU", Netherlands: "NL", Sweden: "SE", "United Kingdom": "GB",
-  Italy: "IT", Germany: "DE", France: "FR", Spain: "ES", Poland: "PL",
-  Belgium: "BE", Denmark: "DK", Norway: "NO", Finland: "FI", Switzerland: "CH",
-  Austria: "AT", Czech: "CZ", Slovakia: "SK", Hungary: "HU", Slovenia: "SI",
-  Croatia: "HR", Serbia: "RS", Romania: "RO", Bulgaria: "BG", Greece: "GR",
-  Portugal: "PT", Ireland: "IE", Lithuania: "LT", Latvia: "LV", Estonia: "EE",
-  Malta: "MT", Cyprus: "CY", Luxembourg: "LU", Iceland: "IS", Canada: "CA",
-  Japan: "JP", "South Korea": "KR", Taiwan: "TW", Singapore: "SG",
-  "Hong Kong": "HK", Malaysia: "MY", Thailand: "TH", India: "IN", China: "CN",
-  UAE: "AE", "Saudi Arabia": "SA", Israel: "IL", Jordan: "JO", Kuwait: "KW",
-  Qatar: "QA", Bahrain: "BH", Oman: "OM", "South Africa": "ZA", Egypt: "EG",
-  Morocco: "MA", Tunisia: "TN", Algeria: "DZ", Turkey: "TR",
-  "United States": "US", USA: "US", Mexico: "MX", Brazil: "BR", Argentina: "AR",
-  Chile: "CL", Colombia: "CO", Peru: "PE", Venezuela: "VE", Ecuador: "EC",
-  Uruguay: "UY", Paraguay: "PY", Bolivia: "BO", "Costa Rica": "CR", Panama: "PA",
-  "Dominican Republic": "DO", "Puerto Rico": "PR", Jamaica: "JM",
-  "Trinidad and Tobago": "TT", Barbados: "BB", "New Zealand": "NZ",
-  Russia: "RU", Ukraine: "UA", Belarus: "BY", Kazakhstan: "KZ", Uzbekistan: "UZ",
-  Georgia: "GE", Armenia: "AM", Azerbaijan: "AZ", Kyrgyzstan: "KG",
-  Tajikistan: "TJ", Turkmenistan: "TM", Moldova: "MD", Mongolia: "MN",
-  Indonesia: "ID", Philippines: "PH", Vietnam: "VN", Cambodia: "KH",
-  Laos: "LA", Myanmar: "MM", Bangladesh: "BD", "Sri Lanka": "LK", Nepal: "NP",
-  Bhutan: "BT", Maldives: "MV", Pakistan: "PK", Afghanistan: "AF", Iran: "IR",
-  Iraq: "IQ", Syria: "SY", Lebanon: "LB", Yemen: "YE", Ethiopia: "ET",
-  Kenya: "KE", Uganda: "UG", Tanzania: "TZ", Rwanda: "RW", Burundi: "BI",
-  Madagascar: "MG", Mauritius: "MU", Seychelles: "SC", Comoros: "KM",
-  Djibouti: "DJ", Somalia: "SO", Eritrea: "ER", Sudan: "SD",
-  "South Sudan": "SS", Chad: "TD", "Central African Republic": "CF",
-  Cameroon: "CM", "Equatorial Guinea": "GQ", Gabon: "GA",
-  "Republic of the Congo": "CG", "Democratic Republic of the Congo": "CD",
-  Angola: "AO", Zambia: "ZM", Zimbabwe: "ZW", Botswana: "BW", Namibia: "NA",
-  "Sao Tome and Principe": "ST", "Cape Verde": "CV", "Guinea-Bissau": "GW",
-  Guinea: "GN", "Sierra Leone": "SL", Liberia: "LR", "Ivory Coast": "CI",
-  Ghana: "GH", "Burkina Faso": "BF", Mali: "ML", Niger: "NE", Nigeria: "NG",
-  Benin: "BJ", Togo: "TG", Senegal: "SN", Gambia: "GM", Mauritania: "MR",
-  "Western Sahara": "EH", Libya: "LY",
+  // Core countries with common aliases
+  Australia: "AU", Netherlands: "NL", Sweden: "SE", "United Kingdom": "GB", UK: "GB", Britain: "GB",
+  Italy: "IT", Germany: "DE", Deutschland: "DE", France: "FR", Spain: "ES", España: "ES", Poland: "PL", Polska: "PL",
+  Belgium: "BE", Danmark: "DK", Denmark: "DK", Norway: "NO", Norge: "NO", Finland: "FI", Suomi: "FI", 
+  Switzerland: "CH", Schweiz: "CH", Austria: "AT", Österreich: "AT",
+  Czech: "CZ", "Czech Republic": "CZ", Czechia: "CZ", Slovakia: "SK", Hungary: "HU", Slovenia: "SI",
+  Croatia: "HR", Hrvatska: "HR", Serbia: "RS", Srbija: "RS", Romania: "RO", România: "RO",
+  Bulgaria: "BG", България: "BG", Greece: "GR", Ελλάδα: "GR", Portugal: "PT", Ireland: "IE", Éire: "IE",
+  Lithuania: "LT", Lietuva: "LT", Latvia: "LV", Latvija: "LV", Estonia: "EE", Eesti: "EE",
+  Malta: "MT", Cyprus: "CY", Κύπρος: "CY", Luxembourg: "LU", Iceland: "IS", Ísland: "IS",
+  
+  // North America with aliases
+  Canada: "CA", "United States": "US", USA: "US", "U.S.": "US", "U.S.A.": "US", America: "US",
+  Mexico: "MX", México: "MX",
+  
+  // Asia Pacific with aliases  
+  Japan: "JP", 日本: "JP", "South Korea": "KR", Korea: "KR", 한국: "KR", Taiwan: "TW", 臺灣: "TW", 台湾: "TW",
+  Singapore: "SG", "Hong Kong": "HK", 香港: "HK", Malaysia: "MY", Thailand: "TH", ประเทศไทย: "TH",
+  India: "IN", भारत: "IN", China: "CN", 中国: "CN", 中國: "CN", Indonesia: "ID", Philippines: "PH",
+  Vietnam: "VN", "Viet Nam": "VN", Việt: "VN", Cambodia: "KH", Laos: "LA", Myanmar: "MM",
+  Bangladesh: "BD", "Sri Lanka": "LK", Nepal: "NP", Bhutan: "BT", Maldives: "MV",
+  Pakistan: "PK", Afghanistan: "AF", Iran: "IR", Iraq: "IQ", Syria: "SY", Lebanon: "LB", Yemen: "YE",
+  
+  // Middle East & Africa with aliases
+  UAE: "AE", "United Arab Emirates": "AE", "Saudi Arabia": "SA", Israel: "IL", ישראל: "IL",
+  Jordan: "JO", Kuwait: "KW", Qatar: "QA", Bahrain: "BH", Oman: "OM",
+  "South Africa": "ZA", Egypt: "EG", مصر: "EG", Morocco: "MA", المغرب: "MA", Tunisia: "TN", Algeria: "DZ",
+  Turkey: "TR", Türkiye: "TR", Turkiye: "TR", "Russian Federation": "RU", Russia: "RU", Россия: "RU",
+  
+  // Americas
+  Brazil: "BR", Brasil: "BR", Argentina: "AR", Chile: "CL", Colombia: "CO", Peru: "PE", Perú: "PE",
+  Venezuela: "VE", Ecuador: "EC", Uruguay: "UY", Paraguay: "PY", Bolivia: "BO",
+  "Costa Rica": "CR", Panama: "PA", Panamá: "PA", "Dominican Republic": "DO", "Puerto Rico": "PR",
+  Jamaica: "JM", "Trinidad and Tobago": "TT", Barbados: "BB", "New Zealand": "NZ",
+  
+  // Eastern Europe & Central Asia
+  Ukraine: "UA", Україна: "UA", Belarus: "BY", Kazakhstan: "KZ", Uzbekistan: "UZ",
+  Georgia: "GE", Armenia: "AM", Azerbaijan: "AZ", Kyrgyzstan: "KG", Tajikistan: "TJ", 
+  Turkmenistan: "TM", Moldova: "MD", Mongolia: "MN",
+  
+  // Africa continued
+  Ethiopia: "ET", Kenya: "KE", Uganda: "UG", Tanzania: "TZ", Rwanda: "RW", Burundi: "BI",
+  Madagascar: "MG", Mauritius: "MU", Seychelles: "SC", Comoros: "KM", Djibouti: "DJ",
+  Somalia: "SO", Eritrea: "ER", Sudan: "SD", "South Sudan": "SS", Chad: "TD",
+  "Central African Republic": "CF", Cameroon: "CM", "Equatorial Guinea": "GQ", Gabon: "GA",
+  "Republic of the Congo": "CG", "Democratic Republic of the Congo": "CD", Angola: "AO",
+  Zambia: "ZM", Zimbabwe: "ZW", Botswana: "BW", Namibia: "NA", "Sao Tome and Principe": "ST",
+  "Cape Verde": "CV", "Guinea-Bissau": "GW", Guinea: "GN", "Sierra Leone": "SL", Liberia: "LR",
+  "Ivory Coast": "CI", Ghana: "GH", "Burkina Faso": "BF", Mali: "ML", Niger: "NE", Nigeria: "NG",
+  Benin: "BJ", Togo: "TG", Senegal: "SN", Gambia: "GM", Mauritania: "MR", "Western Sahara": "EH", Libya: "LY"
 };
 
 function parseProjectName(name: string) {

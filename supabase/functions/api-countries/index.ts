@@ -33,20 +33,26 @@ Deno.serve(async (req) => {
   if (path.endsWith("/api/countries") && req.method === "GET") {
     console.log("Fetching countries list from acc_country_counts");
     
-    // Try to get data from materialized view first
-    const { data: accCountries, error: accErr } = await supabase
+    // Use service role to access materialized view
+    const serviceSupabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    
+    const { data: accCountries, error: accErr } = await serviceSupabase
       .from("acc_country_counts")
-      .select("country_code, country_name, total_projects, high_confidence_projects")
+      .select("country_code, country_name, total_projects, high_confidence_projects, centroid")
       .order("total_projects", { ascending: false });
 
     if (!accErr && Array.isArray(accCountries) && accCountries.length > 0) {
-      console.log("Using ACC materialized view for countries");
+      console.log(`Using ACC materialized view: ${accCountries.length} countries`);
       const response = accCountries.map(country => ({
         code: country.country_code,
         name: country.country_name,
         total: country.total_projects,
         published: country.high_confidence_projects,
-        unpublished: country.total_projects - country.high_confidence_projects
+        unpublished: country.total_projects - country.high_confidence_projects,
+        centroid: country.centroid
       }));
       return json(response);
     }

@@ -26,13 +26,8 @@ export default function Home() {
   }, []);
 
   const openCountry = async (code: string) => {
-    try {
-      const res = await getCountryCmps(code);
-      setDrawer({ open:true, country:{ code, name:res.country }, cmps: res.cmps });
-    } catch (error) {
-      console.error("Failed to load CMPs:", error);
-      alert("Failed to load CMPs");
-    }
+    // Navigate to projects list filtered by country
+    navigate(`/projects?country=${code}`);
   };
 
   return (

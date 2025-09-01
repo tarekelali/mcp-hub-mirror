@@ -87,8 +87,8 @@ export function AppMap({
           .setLngLat([lng, lat])
           .setHTML(`
             <div style="font-weight:700">${p.name} (${p.code})</div>
-            <div style="font-size:12px">Total ${p.total} • Pub ${p.published} • Unpub ${p.unpublished}</div>
-            <button id="open-${p.code}" style="margin-top:8px;padding:6px 10px;border-radius:8px;border:1px solid #0058A3;background:#0058A3;color:#fff;cursor:pointer">Open CMPs</button>
+            <div style="font-size:12px">Total ${p.total} • High Conf ${p.published} • Low Conf ${p.unpublished}</div>
+            <button id="open-${p.code}" style="margin-top:8px;padding:6px 10px;border-radius:8px;border:1px solid #0058A3;background:#0058A3;color:#fff;cursor:pointer">View Projects</button>
           `)
           .addTo(map);
 

@@ -106,16 +106,14 @@ Deno.serve(async (req) => {
     await trackMetrics("api-acc-projects", "success");
 
     return j({
-      projects,
-      pagination: {
-        offset,
-        limit,
-        total: totalCount || 0,
-        hasMore: (projects?.length || 0) === limit && offset + limit < (totalCount || 0)
-      },
+      items: projects || [],
+      total_count: totalCount || 0,
+      has_more: (projects?.length || 0) === limit && offset + limit < (totalCount || 0),
+      offset,
+      limit,
       filters: {
-        country: countryCode,
-        search: searchQuery
+        ...(countryCode && { country: countryCode }),
+        ...(searchQuery && { search: searchQuery })
       }
     });
 
