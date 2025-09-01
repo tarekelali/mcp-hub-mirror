@@ -73,3 +73,35 @@ export async function getHealth(endpoint: string) {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
+
+// CMP API functions
+export async function getCmpOverview(cmpId: string) {
+  const r = await fetch(`${BASE}/api-cmp-overview/api/cmp/${cmpId}/overview`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function getCmpFiles(cmpId: string) {
+  const r = await fetch(`${BASE}/api-cmp-files/api/cmp/${cmpId}/sheets`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function getCmpContact(cmpId: string) {
+  const r = await fetch(`${BASE}/api-cmp-files/api/contacts/${cmpId}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// HFB and DS API functions
+export async function getHfbDetailedSolutions(hfbId: string) {
+  const r = await fetch(`${BASE}/api-hfb/api/hfb/${hfbId}/detailed-solutions`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function getDetailedSolution(dsId: string) {
+  const r = await fetch(`${BASE}/api-detailed-solution/api/detailed-solution/${dsId}/theatre`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}

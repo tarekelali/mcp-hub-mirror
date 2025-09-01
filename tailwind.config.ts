@@ -61,7 +61,11 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				'ikea-blue': 'hsl(var(--static-ikea-blue))',
+				'ikea-yellow': 'hsl(var(--static-ikea-yellow))',
+				'static-black': 'hsl(var(--static-black))',
+				'static-white': 'hsl(var(--static-white))'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -82,7 +86,7 @@ export default {
 						height: 'var(--radix-accordion-content-height)'
 					},
 					to: {
-						height: '0'
+						height: 'var(--radix-accordion-content-height)'
 					}
 				}
 			},

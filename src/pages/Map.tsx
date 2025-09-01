@@ -39,53 +39,46 @@ export default function Map() {
     navigate(`/projects?country=${countryCode}`);
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="text-center">Loading map data...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-red-600">{error}</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const totalProjects = countries.reduce((sum, country) => sum + country.total, 0);
-  const totalPublished = countries.reduce((sum, country) => sum + country.published, 0);
-
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Global Project Map</h1>
-        <p className="text-muted-foreground">
-          {totalProjects.toLocaleString()} projects across {countries.length} countries
-          ({totalPublished.toLocaleString()} published)
-        </p>
-      </div>
+    <div className="p-6 bg-background min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Global Map
+          </h1>
+          <p className="text-muted-foreground">
+            Explore IKEA projects worldwide by clicking on country dots
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Interactive Map</CardTitle>
-          <CardDescription>
-            Click on a country to view its projects
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AppMap 
-            countries={countries}
-            onCountryClick={handleCountryClick}
-          />
-        </CardContent>
-      </Card>
+        {loading && (
+          <div className="text-center py-8">
+            <div className="text-muted-foreground">Loading countries...</div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6">
+            Error: {error}
+          </div>
+        )}
+        
+        {!loading && !error && countries.length > 0 && (
+          <>
+            <div className="skapa-card mb-6">
+              <h2 className="text-xl font-semibold mb-3">Summary</h2>
+              <div className="text-foreground">
+                <span className="font-bold">{countries.reduce((sum, c) => sum + c.total, 0)}</span> total projects 
+                across <span className="font-bold">{countries.length}</span> countries
+              </div>
+            </div>
+            
+            <div className="bg-card rounded-lg border overflow-hidden">
+              <AppMap countries={countries} onCountryClick={handleCountryClick} />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

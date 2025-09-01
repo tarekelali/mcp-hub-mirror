@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { listDS } from "../lib/ds";
+import { getHfbDetailedSolutions } from "../lib/api";
 
 export default function HfbPage() {
   const { id = "" } = useParams();
@@ -10,7 +10,7 @@ export default function HfbPage() {
   React.useEffect(() => { 
     (async () => {
       try {
-        setItems((await listDS(id)).items);
+        setItems((await getHfbDetailedSolutions(id)).items);
       } catch (error) {
         console.error("Failed to load detailed solutions:", error);
       }
@@ -21,35 +21,22 @@ export default function HfbPage() {
     <div 
       onClick={() => navigate(`/ds/${item.id}`)} 
       title={`${item.code} • ${item.pct}%`} 
-      style={{
-        flex: item.pct, 
-        minWidth: 40, 
-        minHeight: 48, 
-        display: "grid", 
-        placeItems: "center",
-        background: "#FFDB00", 
-        color: "#111", 
-        border: "1px solid #fff", 
-        borderRadius: 8, 
-        cursor: "pointer"
-      }}
+      className="skapa-accent cursor-pointer rounded-lg p-4 text-center min-w-[80px] min-h-[64px] flex items-center justify-center transition-all hover:scale-105"
+      style={{ flex: item.pct }}
     >
-      {item.code}
+      <span className="font-medium text-sm">{item.code}</span>
     </div>
   );
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Detailed solutions</h1>
-      <div style={{ 
-        display: "flex", 
-        gap: 8, 
-        flexWrap: "wrap", 
-        background: "#f8f8f8", 
-        padding: 8, 
-        borderRadius: 12 
-      }}>
-        {items.map(i => <Block key={i.id} item={i} />)}
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-foreground mb-6">Detailed Solutions</h1>
+        <div className="skapa-card">
+          <div className="flex gap-2 flex-wrap">
+            {items.map(i => <Block key={i.id} item={i} />)}
+          </div>
+        </div>
       </div>
     </div>
   );

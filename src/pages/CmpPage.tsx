@@ -2,7 +2,7 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Tabs } from "../../packages/ui/src/Tabs";
 import { Modal } from "../../packages/ui/src/Modal";
-import { getCmpOverview, getCmpSheets, getCmpContact } from "../lib/cmp";
+import { getCmpOverview, getCmpFiles, getCmpContact } from "../lib/api";
 import { enqueueDA, daStatus } from "../lib/da";
 import { AccPicker } from "../components/AccPicker";
 import { BASE } from "../lib/api";
@@ -21,7 +21,7 @@ export default function CmpPage() {
       try {
         const [ov, sh, ct] = await Promise.all([
           getCmpOverview(id), 
-          getCmpSheets(id), 
+          getCmpFiles(id), 
           getCmpContact(id)
         ]);
         setData(ov);
@@ -41,98 +41,93 @@ export default function CmpPage() {
     })();
   }, [id]);
 
-  if (!data) return <div style={{ padding: 24 }}>Loading…</div>;
+  if (!data) return (
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center py-8">
+          <div className="text-muted-foreground">Loading CMP data...</div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ marginBottom: 8 }}>{data.cmp.name}</h1>
-      <div style={{ opacity: 0.7, marginBottom: 16 }}>
-        {data.cmp.countryCode} • {data.cmp.published ? "Published" : "Unpublished"}
-        {data.cmp.unitCode && <span> • Unit {data.cmp.unitCode}</span>}
-        {data.cmp.city && <span> • {data.cmp.city}</span>}
-      </div>
-      <Tabs
-        value={tab}
-        onChange={(v) => setTab(v as any)}
-        tabs={[
-          { id: "structure", label: "Structure" },
-          { id: "review", label: "Review" },
-          { id: "contact", label: "Contact" },
-        ]}
-      />
-      <div style={{ marginTop: 16 }}>
-        {tab === "structure" && <StructureTreemap data={data.structure} />}
-        {tab === "review" && <ReviewTable sheets={sheets} onOpen={(url) => setOpenPdf(url)} cmpId={data.cmp.id} />}
-        {tab === "contact" && <ContactCard contact={contact} />}
-      </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="skapa-card mb-6">
+          <h1 className="text-3xl font-bold text-foreground mb-2">{data.cmp.name}</h1>
+          <div className="text-muted-foreground mb-4">
+            {data.cmp.countryCode} • {data.cmp.published ? "Published" : "Unpublished"}
+            {data.cmp.unitCode && <span> • Unit {data.cmp.unitCode}</span>}
+            {data.cmp.city && <span> • {data.cmp.city}</span>}
+          </div>
+        </div>
 
-      <Modal open={!!openPdf} onClose={() => setOpenPdf(null)}>
-        {openPdf ? (
-          <iframe 
-            src={openPdf} 
-            title="Revit Sheet" 
-            style={{ width: "80vw", height: "70vh", border: 0 }} 
-          />
-        ) : null}
-      </Modal>
+        <Tabs
+          value={tab}
+          onChange={(v) => setTab(v as any)}
+          tabs={[
+            { id: "structure", label: "Structure" },
+            { id: "review", label: "Review" },
+            { id: "contact", label: "Contact" },
+          ]}
+        />
+
+        <div className="mt-6">
+          {tab === "structure" && <StructureTreemap data={data.structure} />}
+          {tab === "review" && <ReviewTable sheets={sheets} onOpen={(url) => setOpenPdf(url)} cmpId={data.cmp.id} />}
+          {tab === "contact" && <ContactCard contact={contact} />}
+        </div>
+
+        <Modal open={!!openPdf} onClose={() => setOpenPdf(null)}>
+          {openPdf ? (
+            <iframe 
+              src={openPdf} 
+              title="Revit Sheet" 
+              className="w-[80vw] h-[70vh] border-0" 
+            />
+          ) : null}
+        </Modal>
+      </div>
     </div>
   );
 }
 
 function StructureTreemap({ data }: { data: any }) {
   const navigate = useNavigate();
-  // super-minimal "puzzle" as stacked rows sized by percentage
+  
   const Block = ({ item }: any) => (
     <div 
       title={`${item.name} • ${item.percentage.toFixed(1)}%`} 
       onClick={() => navigate(`/hfb/${item.id}`)}
-      style={{
-        flex: item.percentage, 
-        minWidth: 40, 
-        minHeight: 48, 
-        display: "grid", 
-        placeItems: "center",
-        background: "#FFDB00", 
-        color: "#111", 
-        border: "1px solid #fff", 
-        borderRadius: 8,
-        cursor: "pointer"
-      }}
+      className="skapa-accent cursor-pointer rounded-lg p-4 text-center min-w-[80px] min-h-[64px] flex items-center justify-center transition-all hover:scale-105"
+      style={{ flex: item.percentage }}
     >
-      {item.name}
+      <span className="font-medium text-sm">{item.name}</span>
     </div>
   );
   
   return (
-    <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr" }}>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <div>
-        <div style={{ marginBottom: 8, fontWeight: 700 }}>
+        <h3 className="text-lg font-semibold mb-4">
           Market hall ({Math.round(data.marketHall.totalPct)}%)
-        </div>
-        <div style={{ 
-          display: "flex", 
-          gap: 8, 
-          flexWrap: "wrap", 
-          background: "#f8f8f8", 
-          padding: 8, 
-          borderRadius: 12 
-        }}>
-          {data.marketHall.items.map((i: any) => <Block key={i.id} item={i} />)}
+        </h3>
+        <div className="skapa-card bg-muted/20 p-4">
+          <div className="flex gap-2 flex-wrap">
+            {data.marketHall.items.map((i: any) => <Block key={i.id} item={i} />)}
+          </div>
         </div>
       </div>
+      
       <div>
-        <div style={{ marginBottom: 8, fontWeight: 700 }}>
+        <h3 className="text-lg font-semibold mb-4">
           Showroom ({Math.round(data.showroom.totalPct)}%)
-        </div>
-        <div style={{ 
-          display: "flex", 
-          gap: 8, 
-          flexWrap: "wrap", 
-          background: "#f8f8f8", 
-          padding: 8, 
-          borderRadius: 12 
-        }}>
-          {data.showroom.items.map((i: any) => <Block key={i.id} item={i} />)}
+        </h3>
+        <div className="skapa-card bg-muted/20 p-4">
+          <div className="flex gap-2 flex-wrap">
+            {data.showroom.items.map((i: any) => <Block key={i.id} item={i} />)}
+          </div>
         </div>
       </div>
     </div>
@@ -205,45 +200,64 @@ function ReviewTable({ sheets, onOpen, cmpId }: { sheets: any[]; onOpen: (url:st
   };
 
   return (
-    <>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-        <div style={{ fontWeight:700 }}>Revit Sheets</div>
-        <div style={{ display:"flex", gap:8 }}>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-semibold">Revit Sheets</h3>
+        <div className="flex gap-3">
           {!connected && (
-            <button onClick={connect} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#fff", color:"#0058A3" }}>
+            <button onClick={connect} className="px-4 py-2 rounded-lg border border-primary text-primary hover:bg-primary/10 transition-colors">
               Connect Autodesk
             </button>
           )}
-          <button onClick={()=>setPickerOpen(true)} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#fff", color:"#0058A3" }}>
+          <button onClick={()=>setPickerOpen(true)} className="px-4 py-2 rounded-lg border border-primary text-primary hover:bg-primary/10 transition-colors">
             Pick from ACC
           </button>
-          <button onClick={runDA} disabled={busy} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#0058A3", color:"#fff" }}>
+          <button onClick={runDA} disabled={busy} className="skapa-primary px-4 py-2 rounded-lg font-semibold disabled:opacity-50">
             {busy ? "Enqueuing…" : "Export sheets (DA)"}
           </button>
         </div>
       </div>
 
-      <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:12 }}>
-        <thead><tr><th align="left">Number</th><th align="left">Name</th><th>PDF</th></tr></thead>
-        <tbody>
-          {sheets.map(s => (
-            <tr key={s.id} style={{ borderTop:"1px solid #eee" }}>
-              <td>{s.number}</td><td>{s.name}</td>
-              <td align="center">{s.pdf_url ? <button onClick={()=>onOpen(s.pdf_url)} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid #0058A3", background:"#0058A3", color:"#fff" }}>Open</button> : "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="skapa-card">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-3 px-4">Number</th>
+                <th className="text-left py-3 px-4">Name</th>
+                <th className="text-center py-3 px-4">PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sheets.map(s => (
+                <tr key={s.id} className="border-b last:border-b-0">
+                  <td className="py-3 px-4">{s.number}</td>
+                  <td className="py-3 px-4">{s.name}</td>
+                  <td className="py-3 px-4 text-center">
+                    {s.pdf_url ? (
+                      <button onClick={()=>onOpen(s.pdf_url)} className="skapa-primary px-3 py-1 rounded text-sm">
+                        Open
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      <div style={{ fontSize:12, opacity:.8 }}>
-        <div style={{ fontWeight:700, marginBottom:4 }}>Recent DA jobs</div>
+      <div className="text-sm text-muted-foreground">
+        <h4 className="font-semibold mb-2">Recent DA jobs</h4>
         {jobs.length === 0 && <div>No jobs yet.</div>}
         {jobs.map(j => (
-          <div key={j.id} style={{ display:"flex", gap:8 }}>
-            <div>{new Date(j.created_at).toLocaleString()}</div>
-            <div>• {j.task}</div>
-            <div>• <strong>{j.status}</strong></div>
-            {j.workitem_id && <div>• {j.workitem_id}</div>}
+          <div key={j.id} className="flex gap-3 mb-1">
+            <span>{new Date(j.created_at).toLocaleString()}</span>
+            <span>• {j.task}</span>
+            <span>• <strong>{j.status}</strong></span>
+            {j.workitem_id && <span>• {j.workitem_id}</span>}
           </div>
         ))}
       </div>
@@ -255,20 +269,32 @@ function ReviewTable({ sheets, onOpen, cmpId }: { sheets: any[]; onOpen: (url:st
         folderId={(window as any).__cmp?.accFolderId || ""}
         onPick={runDAFromACC}
       />
-    </>
+    </div>
   );
 }
 
 function ContactCard({ contact }: { contact: any }) {
-  if (!contact) return <div>No contact on file yet.</div>;
+  if (!contact) return (
+    <div className="skapa-card text-center py-8">
+      <div className="text-muted-foreground">No contact on file yet.</div>
+    </div>
+  );
   
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12 }}>
-      <div style={{ fontWeight: 700 }}>{contact.name}</div>
-      <div style={{ opacity: 0.7 }}>{contact.role || "Country superuser"}</div>
-      <div style={{ marginTop: 8 }}>
-        <a href={`mailto:${contact.email}`}>{contact.email}</a>
-        {contact.phone ? ` • ${contact.phone}` : ""}
+    <div className="skapa-card">
+      <h3 className="text-lg font-semibold mb-3">{contact.name}</h3>
+      <div className="text-muted-foreground mb-4">{contact.role || "Country superuser"}</div>
+      <div className="space-y-2">
+        <div>
+          <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
+            {contact.email}
+          </a>
+        </div>
+        {contact.phone && (
+          <div className="text-muted-foreground">
+            {contact.phone}
+          </div>
+        )}
       </div>
     </div>
   );
