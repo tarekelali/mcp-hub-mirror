@@ -34,30 +34,219 @@ function j(body: unknown, status = 200, extraHeaders: HeadersInit = {}) {
 
 const COUNTRY_MAP: Record<string,string> = {
   Australia: "AU",
-  Netherlands: "NL",
+  Netherlands: "NL", 
   Sweden: "SE",
   "United Kingdom": "GB",
+  Italy: "IT",
+  Germany: "DE",
+  France: "FR",
+  Spain: "ES",
+  Poland: "PL",
+  Belgium: "BE",
+  Denmark: "DK",
+  Norway: "NO",
+  Finland: "FI",
+  Switzerland: "CH",
+  Austria: "AT",
+  Czech: "CZ",
+  Slovakia: "SK",
+  Hungary: "HU",
+  Slovenia: "SI",
+  Croatia: "HR",
+  Serbia: "RS",
+  Romania: "RO",
+  Bulgaria: "BG",
+  Greece: "GR",
+  Portugal: "PT",
+  Ireland: "IE",
+  Lithuania: "LT",
+  Latvia: "LV",
+  Estonia: "EE",
+  Malta: "MT",
+  Cyprus: "CY",
+  Luxembourg: "LU",
+  Iceland: "IS",
+  Canada: "CA",
+  Japan: "JP",
+  "South Korea": "KR",
+  Taiwan: "TW",
+  Singapore: "SG",
+  "Hong Kong": "HK",
+  Malaysia: "MY",
+  Thailand: "TH",
+  India: "IN",
+  China: "CN",
+  UAE: "AE",
+  "Saudi Arabia": "SA",
+  Israel: "IL",
+  Jordan: "JO",
+  Kuwait: "KW",
+  Qatar: "QA",
+  Bahrain: "BH",
+  Oman: "OM",
+  "South Africa": "ZA",
+  Egypt: "EG",
+  Morocco: "MA",
+  Tunisia: "TN",
+  Algeria: "DZ",
+  Turkey: "TR",
+  "United States": "US",
+  USA: "US",
+  Mexico: "MX",
+  Brazil: "BR",
+  Argentina: "AR",
+  Chile: "CL",
+  Colombia: "CO",
+  Peru: "PE",
+  Venezuela: "VE",
+  Ecuador: "EC",
+  Uruguay: "UY",
+  Paraguay: "PY",
+  Bolivia: "BO",
+  "Costa Rica": "CR",
+  Panama: "PA",
+  "Dominican Republic": "DO",
+  "Puerto Rico": "PR",
+  Jamaica: "JM",
+  "Trinidad and Tobago": "TT",
+  Barbados: "BB",
+  "New Zealand": "NZ",
+  Russia: "RU",
+  Ukraine: "UA",
+  Belarus: "BY",
+  Kazakhstan: "KZ",
+  Uzbekistan: "UZ",
+  Georgia: "GE",
+  Armenia: "AM",
+  Azerbaijan: "AZ",
+  Kyrgyzstan: "KG",
+  Tajikistan: "TJ",
+  Turkmenistan: "TM",
+  Moldova: "MD",
+  Mongolia: "MN",
+  Indonesia: "ID",
+  Philippines: "PH",
+  Vietnam: "VN",
+  Cambodia: "KH",
+  Laos: "LA",
+  Myanmar: "MM",
+  Bangladesh: "BD",
+  "Sri Lanka": "LK",
+  Nepal: "NP",
+  Bhutan: "BT",
+  Maldives: "MV",
+  Pakistan: "PK",
+  Afghanistan: "AF",
+  Iran: "IR",
+  Iraq: "IQ",
+  Syria: "SY",
+  Lebanon: "LB",
+  Yemen: "YE",
+  Ethiopia: "ET",
+  Kenya: "KE",
+  Uganda: "UG",
+  Tanzania: "TZ",
+  Rwanda: "RW",
+  Burundi: "BI",
+  Madagascar: "MG",
+  Mauritius: "MU",
+  Seychelles: "SC",
+  Comoros: "KM",
+  Djibouti: "DJ",
+  Somalia: "SO",
+  Eritrea: "ER",
+  Sudan: "SD",
+  "South Sudan": "SS",
+  Chad: "TD",
+  "Central African Republic": "CF",
+  Cameroon: "CM",
+  "Equatorial Guinea": "GQ",
+  Gabon: "GA",
+  "Republic of the Congo": "CG",
+  "Democratic Republic of the Congo": "CD",
+  Angola: "AO",
+  Zambia: "ZM",
+  Zimbabwe: "ZW",
+  Botswana: "BW",
+  Namibia: "NA",
+  "Sao Tome and Principe": "ST",
+  "Cape Verde": "CV",
+  "Guinea-Bissau": "GW",
+  Guinea: "GN",
+  "Sierra Leone": "SL",
+  Liberia: "LR",
+  "Ivory Coast": "CI",
+  Ghana: "GH",
+  "Burkina Faso": "BF",
+  Mali: "ML",
+  Niger: "NE",
+  Nigeria: "NG",
+  Benin: "BJ",
+  Togo: "TG",
+  Senegal: "SN",
+  Gambia: "GM",
+  Mauritania: "MR",
+  "Western Sahara": "EH",
+  Libya: "LY",
 };
 
 function parseProjectName(name: string) {
   const parts = name.split("_").filter(Boolean);
-  if (parts.length === 0) return { country: null, unit: null, city: null };
+  if (parts.length === 0) return { 
+    country_code: null, 
+    country_name: null, 
+    unit_code: null, 
+    unit_number: null, 
+    city: null, 
+    name_raw: name,
+    parse_confidence: 0 
+  };
 
   const countryName = parts[0];
-  const country = COUNTRY_MAP[countryName] ?? null;
-
-  let unit: string | null = null;
+  const country_code = COUNTRY_MAP[countryName] ?? null;
+  
+  let unit_code: string | null = null;
+  let unit_number: number | null = null;
   let city: string | null = null;
+  let confidence = 0.5; // Base confidence
 
   if (parts.length >= 2) {
     const maybeUnit = parts[1];
-    unit = /^[A-Za-z0-9]+$/.test(maybeUnit) ? maybeUnit : null;
+    if (/^[A-Za-z0-9]+$/.test(maybeUnit)) {
+      unit_code = maybeUnit;
+      // Check if it's a pure number
+      if (/^\d+$/.test(maybeUnit)) {
+        unit_number = parseInt(maybeUnit, 10);
+      }
+      confidence += 0.2;
+    }
   }
+  
   if (parts.length >= 3) {
-    city = parts[2] || null;
+    const rawCity = parts[2];
+    if (rawCity && rawCity !== "XX" && rawCity !== "xxx") {
+      // Title case the city name
+      city = rawCity.split(/[-_]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      confidence += 0.2;
+    }
   }
 
-  return { country, unit, city };
+  // Boost confidence if we found a known country
+  if (country_code) {
+    confidence += 0.3;
+  }
+
+  return { 
+    country_code, 
+    country_name: countryName,
+    unit_code, 
+    unit_number,
+    city, 
+    name_raw: name,
+    parse_confidence: Math.min(confidence, 1.0)
+  };
 }
 
 async function trackMetrics(functionName: string, statusClass: string) {
@@ -136,6 +325,7 @@ Deno.serve(async (req) => {
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 200);
   const cursor = url.searchParams.get("cursor") || "";
   const searchQuery = url.searchParams.get("q") || "";
+  const countryFilter = url.searchParams.get("country") || "";
 
   // Check headers first, then cookies
   let accessToken = readAT(req);
@@ -225,14 +415,22 @@ Deno.serve(async (req) => {
       })
     : [];
 
-  // Apply search filter
+  // Apply country filter first
   let filteredItems = allItems;
+  if (countryFilter) {
+    filteredItems = allItems.filter((item: any) => 
+      item.country_code === countryFilter.toUpperCase()
+    );
+  }
+
+  // Apply search filter
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
-    filteredItems = allItems.filter((item: any) => 
+    filteredItems = filteredItems.filter((item: any) => 
       item.name.toLowerCase().includes(query) ||
-      (item.country && item.country.toLowerCase().includes(query)) ||
-      (item.unit && item.unit.toLowerCase().includes(query)) ||
+      (item.country_name && item.country_name.toLowerCase().includes(query)) ||
+      (item.country_code && item.country_code.toLowerCase().includes(query)) ||
+      (item.unit_code && item.unit_code.toLowerCase().includes(query)) ||
       (item.city && item.city.toLowerCase().includes(query))
     );
   }

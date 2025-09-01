@@ -42,7 +42,16 @@ export function ForgeViewer({ urn }: { urn: string }) {
         }
         
         console.log("Getting viewer token");
-        const tokenResp = await getViewerToken(); // calls your /api-viewer-sign
+        // Check if token is provided via sessionStorage (from viewer page)
+        const storedToken = sessionStorage.getItem("viewer_token");
+        let tokenResp;
+        
+        if (storedToken) {
+          tokenResp = { access_token: storedToken };
+          sessionStorage.removeItem("viewer_token"); // Clean up after use
+        } else {
+          tokenResp = await getViewerToken(); // calls your /api-viewer-sign
+        }
         
         const options = {
           env: "AutodeskProduction2",
@@ -102,11 +111,10 @@ export function ForgeViewer({ urn }: { urn: string }) {
     <div 
       ref={ref} 
       style={{ 
-        height: "70vh", 
+        height: "100%", 
         width: "100%", 
-        background: "#f6f6f6", 
-        borderRadius: 12 
-      }} 
+        background: "#f6f6f6"
+      }}
     />
   );
 }

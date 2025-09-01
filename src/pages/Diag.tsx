@@ -1,4 +1,6 @@
 import React from "react";
+import { tokenManager } from "../lib/tokenManager";
+import { getViewerToken } from "../../packages/aps-clients/src/viewer";
 
 const FNS =
   import.meta.env.VITE_FUNCTIONS_BASE ||
@@ -7,72 +9,15 @@ const FNS =
     : "https://kuwrhanybqhfnwvshedl.functions.supabase.co");
 const PILOT_CMP = "11111111-1111-1111-1111-111111111111"; // seeded CMP id
 
-// Token Manager for silent refresh and retry logic
-class TokenManager {
-  private refreshTimer: number | null = null;
-  
-  scheduleRefresh(expiresIn: number) {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
-    
-    // Schedule refresh 60 seconds before expiry
-    const refreshDelay = Math.max(60000, (expiresIn * 1000) - 60000);
-    this.refreshTimer = window.setTimeout(() => {
-      this.refreshTokens();
-    }, refreshDelay);
-    
-    console.log(`[TokenManager] Refresh scheduled in ${refreshDelay}ms`);
-  }
-  
-  async refreshTokens(): Promise<boolean> {
-    try {
-      const response = await fetch(`${FNS}/auth-aps-refresh`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "X-APS-RT": localStorage.getItem("aps_rt") || "",
-        },
-      });
-      
-      if (!response.ok) {
-        console.error("[TokenManager] Refresh failed:", response.status);
-        return false;
-      }
-      
-      const data = await response.json();
-      if (data.access_token) {
-        localStorage.setItem("aps_at", data.access_token);
-        this.scheduleRefresh(data.expires_in || 3600);
-        console.log("[TokenManager] Tokens refreshed successfully");
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error("[TokenManager] Refresh error:", error);
-      return false;
-    }
-  }
-  
-  cleanup() {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-      this.refreshTimer = null;
-    }
-  }
-}
-
 export default function Diag() {
   const [out, setOut] = React.useState<any>({});
   const [debugOut, setDebugOut] = React.useState<any>(null);
   const [ready, setReady] = React.useState(false);
-  const [tokenManager] = React.useState(() => new TokenManager());
 
   // Cleanup token manager on unmount
   React.useEffect(() => {
     return () => tokenManager.cleanup();
-  }, [tokenManager]);
+  }, []);
 
   // 1) Parse tokens from URL query and hash BEFORE any fetch runs
   React.useLayoutEffect(() => {
@@ -123,14 +68,9 @@ export default function Diag() {
   }, [tokenManager]);
 
   const getHeaders = (): Record<string, string> => {
-    const hdrs: Record<string, string> = {};
+    const hdrs = tokenManager.getHeaders();
     const at = localStorage.getItem("aps_at") || "";
     const rt = localStorage.getItem("aps_rt") || "";
-    if (at) {
-      hdrs["Authorization"] = `Bearer ${at}`; // standard
-      hdrs["X-APS-AT"] = at;                  // custom, server also accepts
-    }
-    if (rt) hdrs["X-APS-RT"] = rt;
     console.log("[DEBUG] AT length:", at ? at.length : 0, "RT length:", rt ? rt.length : 0);
     return hdrs;
   };
@@ -155,23 +95,7 @@ export default function Diag() {
     (async () => {
       const j = async (u: string, init?: RequestInit): Promise<any> => {
         try {
-          const headers = { ...getHeaders(), ...(init?.headers || {}) };
-          const r = await fetch(u, { ...init, headers, credentials: "include" as RequestCredentials });
-          
-          // Handle 401 with one-shot retry for APS endpoints
-          if (r.status === 401 && (u.includes('/aps-') || u.includes('/auth-aps-'))) {
-            console.log("[Retry] 401 detected, attempting token refresh...");
-            const refreshed = await tokenManager.refreshTokens();
-            if (refreshed) {
-              // Retry with fresh tokens
-              const newHeaders = { ...getHeaders(), ...(init?.headers || {}) };
-              const retryR = await fetch(u, { ...init, headers: newHeaders, credentials: "include" as RequestCredentials });
-              const retryTxt = await retryR.text();
-              try { return { ok: retryR.ok, status: retryR.status, body: JSON.parse(retryTxt) }; }
-              catch { return { ok: retryR.ok, status: retryR.status, body: retryTxt }; }
-            }
-          }
-          
+          const r = await tokenManager.retryRequest(u, { ...init, credentials: "include" as RequestCredentials });
           const txt = await r.text();
           try { return { ok: r.ok, status: r.status, body: JSON.parse(txt) }; }
           catch { return { ok: r.ok, status: r.status, body: txt }; }
@@ -227,17 +151,36 @@ export default function Diag() {
     }
     
     try {
-      // Get viewer token
-      const viewerResult = await fetch(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" });
-      const viewerData = await viewerResult.json();
+      const sampleProject = out.projects.body.sample[0];
       
-      if (!viewerData.access_token) {
+      // Get viewer token and URN
+      const [viewerResult, urnResult] = await Promise.all([
+        getViewerToken(),
+        tokenManager.retryRequest(`${FNS}/aps-sample-urn?project_id=${sampleProject.id}`, { credentials: "include" })
+      ]);
+      
+      const urnData = await urnResult.json();
+      
+      if (!viewerResult.access_token) {
         alert("Failed to get viewer token");
         return;
       }
       
-      const sampleProject = out.projects.body.sample[0];
-      alert(`Sample model flow would open project: ${sampleProject.name} (${sampleProject.country}/${sampleProject.unit}/${sampleProject.city})\nViewer token ready: ${viewerData.access_token.substring(0, 20)}...`);
+      if (!urnData.ok || !urnData.urn) {
+        alert(`Failed to get URN for sample project: ${urnData.code || 'unknown error'}`);
+        return;
+      }
+      
+      // Open in new tab with viewer parameters
+      const viewerUrl = `/viewer?urn=${encodeURIComponent(urnData.urn)}&token=${encodeURIComponent(viewerResult.access_token)}`;
+      window.open(viewerUrl, '_blank');
+      
+      console.log("Sample model opened:", {
+        project: sampleProject.name,
+        location: `${sampleProject.country_name || sampleProject.country || 'N/A'}/${sampleProject.unit || 'N/A'}/${sampleProject.city || 'N/A'}`,
+        urn: urnData.urn,
+        item: urnData.item
+      });
     } catch (error) {
       console.error("Sample model error:", error);
       alert("Failed to prepare sample model");
@@ -307,7 +250,7 @@ export default function Diag() {
         {out?.projects?.body?.sample?.length > 0 && (
           <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
             Sample: {out.projects.body.sample.map((p: any) => 
-              `${p.name} (${p.country || 'N/A'}/${p.unit || 'N/A'}/${p.city || 'N/A'})`
+              `${p.name} (${p.country_name || p.country || 'N/A'}/${p.unit || 'N/A'}/${p.city || 'N/A'})`
             ).join(', ')}
           </div>
         )}
