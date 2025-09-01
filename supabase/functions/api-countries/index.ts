@@ -6,6 +6,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 import { cors } from "../_shared/cors.ts";
+import { CountriesResponseSchema, validateSchema } from "../_shared/schemas.ts";
 
 const WEB_ORIGIN = Deno.env.get("WEB_ORIGIN") || "*";
 const corsHeaders = cors(WEB_ORIGIN);
@@ -54,6 +55,14 @@ Deno.serve(async (req) => {
         unpublished: country.total_projects - country.high_confidence_projects,
         centroid: country.centroid
       }));
+      
+      // Validate response schema
+      const validation = validateSchema(response, CountriesResponseSchema);
+      if (!validation.valid) {
+        console.error("Countries response schema validation failed:", validation.errors);
+        return err(500, "schema_validation_failed", "Response does not match expected schema");
+      }
+      
       return json(response);
     }
     
@@ -87,7 +96,15 @@ Deno.serve(async (req) => {
     }
     
     console.log(`Returning ${results.length} countries with counts`);
-    return json(results);
+    
+    // Validate response schema
+    const validation = validateSchema(response, CountriesResponseSchema);
+    if (!validation.valid) {
+      console.error("Countries response schema validation failed:", validation.errors);
+      return err(500, "schema_validation_failed", "Response does not match expected schema");
+    }
+    
+    return json(response);
   }
 
   // GET /api/countries/:code/cmp

@@ -61,3 +61,15 @@ export async function getProjects(params: {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
+
+export async function getCapabilities() {
+  const r = await fetch(`${BASE}/capabilities`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function getHealth(endpoint: string) {
+  const r = await fetch(`${BASE}/health/${endpoint}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}

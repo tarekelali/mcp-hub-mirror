@@ -195,8 +195,11 @@ export default function Diag() {
 
   return (
     <div style={{ padding: 16 }}>
-      <h1>Diagnostics</h1>
-      <div style={{ opacity:.7, marginBottom:8 }}>FNS = {FNS}</div>
+      <head>
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
+      <h1>Diagnostics (Internal)</h1>
+      <div style={{ opacity:.7, marginBottom:8 }}>FNS = {FNS} | Hidden from search engines</div>
       
       {/* APS Connection Status */}
       <div style={{ marginBottom: 16 }}>

@@ -1,66 +1,90 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { SegmentedControl } from "../../packages/ui/src/SegmentedControl";
-import { AppList } from "../components/AppList";
-import { AppMap } from "../components/AppMap";
-import { CountryDrawer } from "../components/CountryDrawer";
-import { getCountries, getCountryCmps } from "../lib/api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Map, Building2, ArrowRight, Settings } from "lucide-react";
 
-export default function Home() {
+export default function Index() {
   const navigate = useNavigate();
-  const [mode, setMode] = React.useState<"map" | "list">("list");
-  const [countries, setCountries] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [drawer, setDrawer] = React.useState<{open:boolean; country:{code:string;name?:string}|null; cmps:any[]}>({open:false, country:null, cmps:[]});
-
-  React.useEffect(() => {
-    (async () => {
-      try { 
-        setCountries(await getCountries()); 
-      } catch (error) {
-        console.error("Failed to load countries:", error);
-      } finally { 
-        setLoading(false); 
-      }
-    })();
-  }, []);
-
-  const openCountry = async (code: string) => {
-    // Navigate to projects list filtered by country
-    navigate(`/projects?country=${code}`);
-  };
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ marginBottom: 16 }}>MCP Hub — Global Overview</h1>
-      <SegmentedControl
-        value={mode}
-        options={[
-          { value: "map", label: "Map" }, 
-          { value: "list", label: "List" }
-        ]}
-        onChange={(v) => setMode(v as any)}
-      />
-      <div style={{ marginTop: 16 }}>
-        {loading && <div>Loading…</div>}
-        {!loading && mode === "list" && (
-          <AppList countries={countries} onOpen={openCountry} />
-        )}
-        {!loading && mode === "map" && (
-          <AppMap
-            countries={countries}
-            onCountryClick={openCountry}
-          />
-        )}
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold mb-4">Geo Scope Pilot</h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          Explore global construction projects through interactive maps, detailed project listings, and comprehensive analytics.
+        </p>
       </div>
 
-      <CountryDrawer
-        open={drawer.open}
-        onClose={()=>setDrawer(d => ({...d, open:false}))}
-        country={drawer.country}
-        cmps={drawer.cmps}
-        onOpenCmp={(id)=>navigate(`/cmp/${id}`)}
-      />
+      <div className="grid md:grid-cols-3 gap-6">
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/map")}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Map className="w-5 h-5" />
+              Global Map
+            </CardTitle>
+            <CardDescription>
+              Interactive world map of projects
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Explore projects worldwide through an interactive map interface with country-level statistics.
+            </p>
+            <div className="flex items-center text-sm text-blue-600">
+              <ArrowRight className="w-4 h-4 mr-1" />
+              View Map
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/projects")}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Project Explorer
+            </CardTitle>
+            <CardDescription>
+              Browse and search ACC projects
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Search and filter through the ACC project database with advanced filtering options and detailed project information.
+            </p>
+            <div className="flex items-center text-sm text-blue-600">
+              <ArrowRight className="w-4 h-4 mr-1" />
+              Explore Projects
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/_diag")}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Diagnostics
+            </CardTitle>
+            <CardDescription>
+              System health and administration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Internal diagnostics, system health monitoring, and administrative tools.
+            </p>
+            <div className="flex items-center text-sm text-orange-600">
+              <ArrowRight className="w-4 h-4 mr-1" />
+              Admin Access
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          Built with modern web technologies for seamless project exploration and analysis.
+        </p>
+      </div>
     </div>
   );
 }

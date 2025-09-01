@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { WEB_ORIGIN } from "../_shared/env.ts";
 import { dataCors } from "../_shared/cors.ts";
+import { ProjectsResponseSchema, validateSchema } from "../_shared/schemas.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
 const CORS = dataCors(ORIGIN);
@@ -105,7 +106,7 @@ Deno.serve(async (req) => {
 
     await trackMetrics("api-acc-projects", "success");
 
-    return j({
+    const response = {
       items: projects || [],
       total_count: totalCount || 0,
       has_more: (projects?.length || 0) === limit && offset + limit < (totalCount || 0),
@@ -115,7 +116,17 @@ Deno.serve(async (req) => {
         ...(countryCode && { country: countryCode }),
         ...(searchQuery && { search: searchQuery })
       }
-    });
+    };
+
+    // Validate response schema
+    const validation = validateSchema(response, ProjectsResponseSchema);
+    if (!validation.valid) {
+      console.error("Projects response schema validation failed:", validation.errors);
+      await trackMetrics("api-acc-projects", "schema_error");
+      return j({ error: "schema_validation_failed", details: validation.errors }, 500);
+    }
+
+    return j(response);
 
   } catch (error) {
     console.error("API ACC projects error:", error);
