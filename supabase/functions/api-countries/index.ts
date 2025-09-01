@@ -31,16 +31,24 @@ Deno.serve(async (req) => {
 
   // GET /api/countries
   if (path.endsWith("/api/countries") && req.method === "GET") {
-    console.log("Fetching countries list");
+    console.log("Fetching countries list from acc_country_counts");
     
-    // If mv_country_counts exists, use it; else compute on the fly.
-    const { data: mv, error: mvErr } = await supabase
-      .from("mv_country_counts")
-      .select("code,name,centroid,total,published,unpublished")
-      .order("code", { ascending: true });
-    if (!mvErr && Array.isArray(mv) && mv.length > 0) {
-      console.log("Using materialized view for countries");
-      return json(mv);
+    // Try to get data from materialized view first
+    const { data: accCountries, error: accErr } = await supabase
+      .from("acc_country_counts")
+      .select("country_code, country_name, total_projects, high_confidence_projects")
+      .order("total_projects", { ascending: false });
+
+    if (!accErr && Array.isArray(accCountries) && accCountries.length > 0) {
+      console.log("Using ACC materialized view for countries");
+      const response = accCountries.map(country => ({
+        code: country.country_code,
+        name: country.country_name,
+        total: country.total_projects,
+        published: country.high_confidence_projects,
+        unpublished: country.total_projects - country.high_confidence_projects
+      }));
+      return json(response);
     }
     
     // Fallback: compute counts on the fly

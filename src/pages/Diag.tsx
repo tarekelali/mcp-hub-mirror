@@ -294,6 +294,12 @@ export default function Diag() {
             Open sample model
           </button>
         )}
+        <button 
+          onClick={() => window.open('/projects', '_blank')}
+          style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#0066cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
+        >
+          View All Projects
+        </button>
         {debugOut && (
           <pre style={{ marginTop: 8, padding: 8, backgroundColor: "#f5f5f5", borderRadius: 4, fontSize: "12px" }}>
             {JSON.stringify(debugOut, null, 2)}

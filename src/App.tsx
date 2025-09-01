@@ -9,6 +9,7 @@ import HfbPage from "./pages/HfbPage";
 import DsPage from "./pages/DsPage";
 import Diag from "./pages/Diag";
 import Viewer from "./pages/Viewer";
+import ProjectsList from "./pages/ProjectsList";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/hfb/:id" element={<HfbPage />} />
           <Route path="/ds/:id" element={<DsPage />} />
           <Route path="/viewer" element={<Viewer />} />
+          <Route path="/projects" element={<ProjectsList />} />
           <Route path="/_diag" element={<Diag />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
