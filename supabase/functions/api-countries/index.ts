@@ -59,7 +59,8 @@ Deno.serve(async (req) => {
       // Validate response schema
       const validation = validateSchema(response, CountriesResponseSchema);
       if (!validation.valid) {
-        console.error("Countries response schema validation failed:", validation.errors);
+        console.error("ACC materialized view schema validation failed:", validation.errors);
+        console.error("Sample ACC data:", JSON.stringify(response.slice(0, 2), null, 2));
         return err(500, "schema_validation_failed", "Response does not match expected schema");
       }
       
@@ -101,6 +102,7 @@ Deno.serve(async (req) => {
     const validation = validateSchema(results, CountriesResponseSchema);
     if (!validation.valid) {
       console.error("Countries response schema validation failed:", validation.errors);
+      console.error("Sample result data:", JSON.stringify(results.slice(0, 2), null, 2));
       return err(500, "schema_validation_failed", "Response does not match expected schema");
     }
     
