@@ -89,9 +89,9 @@ Deno.serve(async (req) => {
         code: c.code, 
         name: c.name, 
         centroid: (c as any).centroid ?? null,
-        total: total ?? 0, 
-        published: pub ?? 0, 
-        unpublished: unpub ?? 0 
+        total: Number(total ?? 0), 
+        published: Number(pub ?? 0), 
+        unpublished: Number(unpub ?? 0) 
       });
     }
     
