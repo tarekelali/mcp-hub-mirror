@@ -549,10 +549,10 @@ export type Database = {
       acc_country_counts: {
         Row: {
           avg_confidence: number | null
+          centroid: Json | null
           country_code: string | null
           country_name: string | null
           high_confidence_projects: number | null
-          last_updated: string | null
           total_projects: number | null
         }
         Relationships: []
