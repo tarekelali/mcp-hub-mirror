@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      acc_ingest_jobs: {
+        Row: {
+          completed_at: string | null
+          errors_count: number | null
+          id: string
+          notes: string | null
+          processed_projects: number | null
+          started_at: string
+          status: string
+          total_projects: number | null
+          triggered_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          errors_count?: number | null
+          id?: string
+          notes?: string | null
+          processed_projects?: number | null
+          started_at?: string
+          status?: string
+          total_projects?: number | null
+          triggered_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          errors_count?: number | null
+          id?: string
+          notes?: string | null
+          processed_projects?: number | null
+          started_at?: string
+          status?: string
+          total_projects?: number | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       acc_project_map: {
         Row: {
           acc_project_id: string
@@ -54,6 +90,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      acc_projects: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          country_name: string | null
+          ingested_at: string
+          name_raw: string
+          parse_confidence: number | null
+          project_id: string
+          unit_code: string | null
+          unit_number: number | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          ingested_at?: string
+          name_raw: string
+          parse_confidence?: number | null
+          project_id: string
+          unit_code?: string | null
+          unit_number?: number | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          ingested_at?: string
+          name_raw?: string
+          parse_confidence?: number | null
+          project_id?: string
+          unit_code?: string | null
+          unit_number?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       aps_metrics: {
         Row: {
@@ -471,6 +546,17 @@ export type Database = {
       }
     }
     Views: {
+      acc_country_counts: {
+        Row: {
+          avg_confidence: number | null
+          country_code: string | null
+          country_name: string | null
+          high_confidence_projects: number | null
+          last_updated: string | null
+          total_projects: number | null
+        }
+        Relationships: []
+      }
       mv_country_counts: {
         Row: {
           centroid: Json | null
@@ -484,6 +570,10 @@ export type Database = {
       }
     }
     Functions: {
+      refresh_acc_country_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       refresh_mv_country_counts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
