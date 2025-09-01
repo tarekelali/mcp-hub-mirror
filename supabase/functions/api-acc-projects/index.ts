@@ -1,18 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { WEB_ORIGIN } from "../_shared/env.ts";
 import { dataCors } from "../_shared/cors.ts";
 import { ProjectsResponseSchema, validateSchema } from "../_shared/schemas.ts";
 
-const ORIGIN = WEB_ORIGIN || "*";
-const CORS = dataCors(ORIGIN);
-
-function j(body: unknown, status = 200, extraHeaders: HeadersInit = {}) {
+function j(body: unknown, status = 200, extraHeaders: HeadersInit = {}, corsHeaders: HeadersInit = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "content-type": "application/json",
-      ...CORS,
+      ...corsHeaders,
       ...extraHeaders,
     },
   });
@@ -36,10 +32,13 @@ async function trackMetrics(functionName: string, statusClass: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const requestOrigin = req.headers.get("origin") || "";
+  const corsHeaders = dataCors(requestOrigin);
+  
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "GET") {
     await trackMetrics("api-acc-projects", "method_not_allowed");
-    return j({ error: "method_not_allowed" }, 405);
+    return j({ error: "method_not_allowed" }, 405, {}, corsHeaders);
   }
 
   try {
@@ -81,7 +80,7 @@ Deno.serve(async (req) => {
     if (error) {
       console.error("Projects query error:", error);
       await trackMetrics("api-acc-projects", "error");
-      return j({ error: "database_error", details: error.message }, 500);
+      return j({ error: "database_error", details: error.message }, 500, {}, corsHeaders);
     }
 
     // Get total count for pagination
@@ -123,14 +122,14 @@ Deno.serve(async (req) => {
     if (!validation.valid) {
       console.error("Projects response schema validation failed:", validation.errors);
       await trackMetrics("api-acc-projects", "schema_error");
-      return j({ error: "schema_validation_failed", details: validation.errors }, 500);
+      return j({ error: "schema_validation_failed", details: validation.errors }, 500, {}, corsHeaders);
     }
 
-    return j(response);
+    return j(response, 200, {}, corsHeaders);
 
   } catch (error) {
     console.error("API ACC projects error:", error);
     await trackMetrics("api-acc-projects", "error");
-    return j({ error: "internal_error", details: String(error) }, 500);
+    return j({ error: "internal_error", details: String(error) }, 500, {}, corsHeaders);
   }
 });

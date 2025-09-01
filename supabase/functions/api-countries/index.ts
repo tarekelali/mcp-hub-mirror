@@ -5,16 +5,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-import { cors } from "../_shared/cors.ts";
+import { dataCors } from "../_shared/cors.ts";
 import { CountriesResponseSchema, validateSchema } from "../_shared/schemas.ts";
-
-const WEB_ORIGIN = Deno.env.get("WEB_ORIGIN") || "*";
-const corsHeaders = cors(WEB_ORIGIN);
 
 type CountryRow = { code: string; name: string };
 type CmpRow = { id: string; name: string; country_code: string; published: boolean };
 
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get("origin") || "";
+  const corsHeaders = dataCors(requestOrigin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
