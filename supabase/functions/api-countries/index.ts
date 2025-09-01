@@ -98,13 +98,13 @@ Deno.serve(async (req) => {
     console.log(`Returning ${results.length} countries with counts`);
     
     // Validate response schema
-    const validation = validateSchema(response, CountriesResponseSchema);
+    const validation = validateSchema(results, CountriesResponseSchema);
     if (!validation.valid) {
       console.error("Countries response schema validation failed:", validation.errors);
       return err(500, "schema_validation_failed", "Response does not match expected schema");
     }
     
-    return json(response);
+    return json(results);
   }
 
   // GET /api/countries/:code/cmp
