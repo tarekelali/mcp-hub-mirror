@@ -19,6 +19,19 @@ export async function getCountryCmps(code: string) {
   }>;
 }
 
+export async function getAllCmps() {
+  const r = await fetch(`${BASE}/api-countries/cmps`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<Array<{ 
+    id: string; 
+    name: string; 
+    country_code: string; 
+    country_name: string; 
+    published: boolean; 
+    centroid: { lat: number; lng: number } | null;
+  }>>;
+}
+
 export interface Project {
   project_id: string;
   name_raw: string;

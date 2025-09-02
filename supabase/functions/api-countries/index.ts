@@ -164,6 +164,39 @@ Deno.serve(async (req) => {
     return json(results);
   }
 
+  // GET /api/countries/cmps (all CMPs)
+  if (path === "/api-countries/cmps" && req.method === "GET") {
+    console.log("Fetching all CMPs");
+    
+    const { data, error } = await supabase
+      .from("cmps")
+      .select(`
+        id, 
+        name, 
+        country_code, 
+        published,
+        countries!inner(name, centroid)
+      `)
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching all CMPs:", error);
+      return err(500, "all_cmps_failed", error.message);
+    }
+    
+    const cmps = (data ?? []).map((cmp: any) => ({
+      id: cmp.id,
+      name: cmp.name,
+      country_code: cmp.country_code,
+      country_name: cmp.countries?.name || cmp.country_code,
+      published: cmp.published,
+      centroid: normalizeCentroid(cmp.countries?.centroid)
+    }));
+    
+    console.log(`Returning ${cmps.length} CMPs`);
+    return json(cmps);
+  }
+
   // GET /api/countries/:code/cmp (both /api-countries/:code/cmp and /api-countries/api/countries/:code/cmp)
   const match = path.match(/\/(?:api-countries|api\/countries)\/([A-Za-z0-9_-]+)\/cmp$/);
   if (match && req.method === "GET") {
