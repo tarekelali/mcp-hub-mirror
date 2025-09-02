@@ -24,8 +24,8 @@ export function AppMap({
   React.useEffect(() => {
     if (!ref.current || mapRef.current) return;
     
-    // Set Mapbox token from environment
-    (mapboxgl as any).accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    // Set Mapbox token
+    (mapboxgl as any).accessToken = 'pk.eyJ1IjoidGFyZWtlbGFsaSIsImEiOiJjaXUzdGF2anUwMDFhMzNsMG1nZzc2OTM1In0.OiE6a8DGTJjxT13vloRYEQ';
     
     const map = new mapboxgl.Map({
       container: ref.current,
