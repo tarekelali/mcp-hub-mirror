@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { AppMap } from "../components/AppMap";
 import { useNavigate } from "react-router-dom";
 import { getCountries } from "../lib/api";
+import { debugApiConnection } from "../lib/debug-api";
 
 export default function Map() {
   const [countries, setCountries] = React.useState<Array<{
@@ -21,6 +22,12 @@ export default function Map() {
     async function fetchCountries() {
       try {
         setLoading(true);
+        
+        // Debug API connectivity first
+        console.log("Starting debug API test...");
+        const debugResult = await debugApiConnection();
+        console.log("Debug result:", debugResult);
+        
         const data = await getCountries();
         setCountries(data);
         setError(null);
