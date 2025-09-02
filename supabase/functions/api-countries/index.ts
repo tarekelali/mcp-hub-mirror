@@ -63,8 +63,8 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_ANON_KEY")! // read-only public routes
   );
 
-  // GET /api/countries
-  if (path.endsWith("/api/countries") && req.method === "GET") {
+  // GET /api/countries (both /api-countries and /api-countries/api/countries for compatibility)
+  if ((path === "/api-countries" || path.endsWith("/api/countries")) && req.method === "GET") {
     console.log("Fetching countries list from acc_country_counts");
     
     // Use service role to access materialized view
@@ -164,8 +164,8 @@ Deno.serve(async (req) => {
     return json(results);
   }
 
-  // GET /api/countries/:code/cmp
-  const match = path.match(/\/api\/countries\/([A-Za-z0-9_-]+)\/cmp$/);
+  // GET /api/countries/:code/cmp (both /api-countries/:code/cmp and /api-countries/api/countries/:code/cmp)
+  const match = path.match(/\/(?:api-countries|api\/countries)\/([A-Za-z0-9_-]+)\/cmp$/);
   if (match && req.method === "GET") {
     const code = match[1];
     console.log(`Fetching CMPs for country: ${code}`);

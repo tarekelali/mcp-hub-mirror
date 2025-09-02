@@ -188,6 +188,17 @@ export function validateSchema(data: unknown, schema: any): { valid: boolean; er
           if (type === "number") return typeof value === "number";
           if (type === "integer") return Number.isInteger(value);
           if (type === "boolean") return typeof value === "boolean";
+          if (type === "object") {
+            if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+            if (schemaObj.properties) {
+              for (const [key, propSchema] of Object.entries(schemaObj.properties)) {
+                if (key in value) {
+                  if (!validate(value[key], propSchema, `${path}.${key}`)) return false;
+                }
+              }
+            }
+            return true;
+          }
           return false;
         });
       }
