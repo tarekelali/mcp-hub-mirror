@@ -70,6 +70,12 @@ export default function Map() {
           </div>
         )}
         
+        {!loading && !error && countries.length === 0 && (
+          <div className="text-center py-8">
+            <div className="text-muted-foreground">No data available yet. Please check back later.</div>
+          </div>
+        )}
+        
         {!loading && !error && countries.length > 0 && (
           <>
             <div className="skapa-card mb-6">

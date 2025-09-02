@@ -6,7 +6,7 @@ export async function debugApiConnection() {
     console.log("Testing API connectivity...");
     
     // Test 1: Direct function call
-    const response = await fetch(`${baseUrl}/api-countries/api/countries`, {
+    const response = await fetch(`${baseUrl}/api-countries`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

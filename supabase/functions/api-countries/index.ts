@@ -11,6 +11,39 @@ import { CountriesResponseSchema, validateSchema } from "../_shared/schemas.ts";
 type CountryRow = { code: string; name: string };
 type CmpRow = { id: string; name: string; country_code: string; published: boolean };
 
+// Helper to normalize centroid data from various formats
+function normalizeCentroid(centroid: any): { lat: number; lng: number } | null {
+  if (!centroid) return null;
+  
+  // Handle GeoJSON Point format
+  if (centroid.type === 'Point' && Array.isArray(centroid.coordinates)) {
+    return { lat: centroid.coordinates[1], lng: centroid.coordinates[0] };
+  }
+  
+  // Handle array format [lng, lat]
+  if (Array.isArray(centroid) && centroid.length >= 2) {
+    return { lat: centroid[1], lng: centroid[0] };
+  }
+  
+  // Handle object with lat/lng properties
+  if (typeof centroid === 'object' && centroid.lat !== undefined && centroid.lng !== undefined) {
+    return { lat: Number(centroid.lat), lng: Number(centroid.lng) };
+  }
+  
+  // Handle WKT POINT format
+  if (typeof centroid === 'string') {
+    const wktMatch = centroid.match(/POINT\s*\(\s*([^)]+)\s*\)/i);
+    if (wktMatch) {
+      const coords = wktMatch[1].split(/\s+/).map(Number);
+      if (coords.length >= 2) {
+        return { lat: coords[1], lng: coords[0] };
+      }
+    }
+  }
+  
+  return null;
+}
+
 Deno.serve(async (req) => {
   const requestOrigin = req.headers.get("origin") || "";
   const corsHeaders = dataCors(requestOrigin);
@@ -50,18 +83,29 @@ Deno.serve(async (req) => {
       const response = accCountries.map(country => ({
         code: country.country_code,
         name: country.country_name,
-        total: country.total_projects,
-        published: country.high_confidence_projects,
-        unpublished: country.total_projects - country.high_confidence_projects,
-        centroid: country.centroid
-      }));
+        total: Number(country.total_projects || 0),
+        published: Number(country.high_confidence_projects || 0),
+        unpublished: Number((country.total_projects || 0) - (country.high_confidence_projects || 0)),
+        centroid: normalizeCentroid(country.centroid)
+      })).filter(country => country.code && country.name); // Filter out invalid entries
       
       // Validate response schema
       const validation = validateSchema(response, CountriesResponseSchema);
       if (!validation.valid) {
         console.error("ACC materialized view schema validation failed:", validation.errors);
         console.error("Sample ACC data:", JSON.stringify(response.slice(0, 2), null, 2));
-        return err(500, "schema_validation_failed", "Response does not match expected schema");
+        // Instead of returning 500, filter out invalid items and continue
+        const validItems = response.filter((item, index) => {
+          const itemValidation = validateSchema([item], CountriesResponseSchema);
+          if (!itemValidation.valid) {
+            console.error(`Invalid item at index ${index}:`, JSON.stringify(item, null, 2));
+            console.error(`Validation error:`, itemValidation.errors);
+            return false;
+          }
+          return true;
+        });
+        console.log(`Filtered ${response.length - validItems.length} invalid items, returning ${validItems.length} valid items`);
+        return json(validItems);
       }
       
       return json(response);
@@ -89,7 +133,7 @@ Deno.serve(async (req) => {
       results.push({ 
         code: c.code, 
         name: c.name, 
-        centroid: (c as any).centroid ?? null,
+        centroid: normalizeCentroid((c as any).centroid),
         total: Number(total ?? 0), 
         published: Number(pub ?? 0), 
         unpublished: Number(unpub ?? 0) 
@@ -103,7 +147,18 @@ Deno.serve(async (req) => {
     if (!validation.valid) {
       console.error("Countries response schema validation failed:", validation.errors);
       console.error("Sample result data:", JSON.stringify(results.slice(0, 2), null, 2));
-      return err(500, "schema_validation_failed", "Response does not match expected schema");
+      // Instead of returning 500, filter out invalid items and continue
+      const validItems = results.filter((item, index) => {
+        const itemValidation = validateSchema([item], CountriesResponseSchema);
+        if (!itemValidation.valid) {
+          console.error(`Invalid fallback item at index ${index}:`, JSON.stringify(item, null, 2));
+          console.error(`Validation error:`, itemValidation.errors);
+          return false;
+        }
+        return true;
+      });
+      console.log(`Filtered ${results.length - validItems.length} invalid fallback items, returning ${validItems.length} valid items`);
+      return json(validItems);
     }
     
     return json(results);
