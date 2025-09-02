@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
   }
 
   // GET /api/countries/cmps (all CMPs)
-  if (path === "/api-countries/cmps" && req.method === "GET") {
+  if ((path === "/api-countries/cmps" || path.endsWith("/api/countries/cmps")) && req.method === "GET") {
     console.log("Fetching all CMPs");
     
     const { data, error } = await supabase
