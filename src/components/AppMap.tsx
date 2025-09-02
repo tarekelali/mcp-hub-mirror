@@ -1,7 +1,7 @@
 import React from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { getCountryCmps } from "@/lib/api";
+import { fetchAllProjectsByCountry } from "@/lib/api";
 
 type C = { 
   code: string; 
@@ -90,50 +90,51 @@ export function AppMap({
           .setHTML(`
             <div style="font-weight:700; margin-bottom: 8px;">${p.name} (${p.code})</div>
             <div style="font-size:12px; margin-bottom: 12px;">Total ${p.total} • Published ${p.published} • Unpublished ${p.unpublished}</div>
-            <div style="font-size:12px;">Loading CMPs...</div>
+            <div style="font-size:12px;">Loading projects...</div>
           `)
           .addTo(map);
 
         try {
-          // Fetch CMPs for this country
-          const { cmps } = await getCountryCmps(p.code);
+          // Fetch all projects for this country
+          const { projects } = await fetchAllProjectsByCountry(p.code);
           
-          // Update popup with CMP list
+          // Update popup with project list
           const maxDisplay = 8;
-          const hasMore = cmps.length > maxDisplay;
-          const displayCmps = cmps.slice(0, maxDisplay);
+          const hasMore = projects.length > maxDisplay;
+          const displayProjects = projects.slice(0, maxDisplay);
           
-          const cmpList = displayCmps.map(cmp => `
+          const projectList = displayProjects.map(project => `
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
               <div style="flex: 1;">
-                <div style="font-weight: 500; font-size: 13px;">${cmp.name}</div>
+                <div style="font-weight: 500; font-size: 13px;">${project.name_raw}</div>
                 <div style="font-size: 11px; color: #666;">
-                  ${cmp.published ? '✅ Published' : '⏳ Unpublished'}
+                  ${project.city ? '📍 ' + project.city : ''}
+                  ${project.unit_code ? '🏢 ' + project.unit_code : ''}
                 </div>
               </div>
-              <button class="cmp-open-btn" data-cmp-id="${cmp.id}" style="margin-left: 8px; padding: 4px 8px; font-size: 11px; border-radius: 4px; border: 1px solid #0058A3; background: white; color: #0058A3; cursor: pointer;">Open</button>
+              <button class="project-open-btn" data-project-id="${project.project_id}" style="margin-left: 8px; padding: 4px 8px; font-size: 11px; border-radius: 4px; border: 1px solid #0058A3; background: white; color: #0058A3; cursor: pointer;">View</button>
             </div>
           `).join('');
           
           popup.setHTML(`
             <div style="font-weight:700; margin-bottom: 8px;">${p.name} (${p.code})</div>
-            <div style="font-size:12px; margin-bottom: 12px;">Total ${p.total} • Published ${p.published} • Unpublished ${p.unpublished}</div>
+            <div style="font-size:12px; margin-bottom: 12px;">Total ${p.total} projects</div>
             <div style="max-height: 240px; overflow-y: auto;">
-              ${cmpList}
-              ${hasMore ? `<div style="padding: 8px 0; text-align: center;"><button id="view-all-${p.code}" style="font-size: 11px; color: #0058A3; background: none; border: none; cursor: pointer; text-decoration: underline;">View all ${cmps.length} CMPs</button></div>` : ''}
+              ${projectList}
+              ${hasMore ? `<div style="padding: 8px 0; text-align: center;"><button id="view-all-${p.code}" style="font-size: 11px; color: #0058A3; background: none; border: none; cursor: pointer; text-decoration: underline;">View all ${projects.length} projects</button></div>` : ''}
             </div>
           `);
           
-          // Add click handlers for CMP buttons
+          // Add click handlers for project buttons
           setTimeout(() => {
             const popup_element = popup.getElement();
             if (popup_element) {
-              // Handle individual CMP open buttons
-              popup_element.querySelectorAll('.cmp-open-btn').forEach(btn => {
+              // Handle individual project open buttons
+              popup_element.querySelectorAll('.project-open-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                  const cmpId = (e.target as HTMLElement).getAttribute('data-cmp-id');
-                  if (cmpId) {
-                    window.open(`/cmp/${cmpId}`, '_blank');
+                  const projectId = (e.target as HTMLElement).getAttribute('data-project-id');
+                  if (projectId) {
+                    window.open(`https://construction.autodesk.com/projects/${projectId}`, '_blank');
                   }
                 });
               });
@@ -147,11 +148,11 @@ export function AppMap({
           }, 0);
           
         } catch (error) {
-          console.error('Error loading CMPs:', error);
+          console.error('Error loading projects:', error);
           popup.setHTML(`
             <div style="font-weight:700; margin-bottom: 8px;">${p.name} (${p.code})</div>
-            <div style="font-size:12px; margin-bottom: 12px;">Total ${p.total} • Published ${p.published} • Unpublished ${p.unpublished}</div>
-            <div style="color: red; font-size: 12px;">Error loading CMPs</div>
+            <div style="font-size:12px; margin-bottom: 12px;">Total ${p.total} projects</div>
+            <div style="color: red; font-size: 12px;">Error loading projects</div>
             <button id="fallback-${p.code}" style="margin-top:8px;padding:6px 10px;border-radius:8px;border:1px solid #0058A3;background:#0058A3;color:#fff;cursor:pointer">View Projects</button>
           `);
           

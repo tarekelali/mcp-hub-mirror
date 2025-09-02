@@ -19,6 +19,43 @@ export async function getCountryCmps(code: string) {
   }>;
 }
 
+// Fetch all projects (replacing getAllCmps to get all ACC projects)
+export async function fetchAllProjects(): Promise<Project[]> {
+  const allProjects: Project[] = [];
+  let offset = 0;
+  const limit = 1000; // Large batch size for efficiency
+  
+  while (true) {
+    const response = await getProjects({ limit, offset });
+    allProjects.push(...response.items);
+    
+    if (!response.has_more) break;
+    offset += limit;
+  }
+  
+  return allProjects;
+}
+
+// Fetch all projects for a specific country
+export async function fetchAllProjectsByCountry(countryCode: string): Promise<{ country: string; projects: Project[] }> {
+  const allProjects: Project[] = [];
+  let offset = 0;
+  const limit = 1000;
+  
+  while (true) {
+    const response = await getProjects({ country: countryCode, limit, offset });
+    allProjects.push(...response.items);
+    
+    if (!response.has_more) break;
+    offset += limit;
+  }
+  
+  return {
+    country: countryCode,
+    projects: allProjects
+  };
+}
+
 export async function getAllCmps() {
   const r = await fetch(`${BASE}/api-countries/cmps`);
   if (!r.ok) throw new Error(await r.text());

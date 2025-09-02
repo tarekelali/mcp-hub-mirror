@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppMap } from "@/components/AppMap";
 import { SegmentedControl } from "../../packages/ui/src/SegmentedControl";
-import { getCountries, getAllCmps } from "@/lib/api";
+import { getCountries, fetchAllProjects, Project } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,20 +18,13 @@ type Country = {
   centroid?: { lat: number; lng: number } | null;
 };
 
-type CMP = {
-  id: string;
-  name: string;
-  country_code: string;
-  country_name: string;
-  published: boolean;
-  centroid: { lat: number; lng: number } | null;
-};
+// Using Project type from API instead of CMP
 
 export default function Explore() {
   const [view, setView] = useState<string>("Map");
   const [countries, setCountries] = useState<Country[]>([]);
-  const [cmps, setCmps] = useState<CMP[]>([]);
-  const [groupedCmps, setGroupedCmps] = useState<Record<string, CMP[]>>({});
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [groupedProjects, setGroupedProjects] = useState<Record<string, Project[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openCountries, setOpenCountries] = useState<Record<string, boolean>>({});
@@ -42,26 +35,26 @@ export default function Explore() {
   }, []);
 
   useEffect(() => {
-    if (cmps.length > 0) {
-      const grouped = cmps.reduce((acc, cmp) => {
-        const key = cmp.country_code;
+    if (projects.length > 0) {
+      const grouped = projects.reduce((acc, project) => {
+        const key = project.country_code || 'unknown';
         if (!acc[key]) acc[key] = [];
-        acc[key].push(cmp);
+        acc[key].push(project);
         return acc;
-      }, {} as Record<string, CMP[]>);
-      setGroupedCmps(grouped);
+      }, {} as Record<string, Project[]>);
+      setGroupedProjects(grouped);
     }
-  }, [cmps]);
+  }, [projects]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [countriesData, cmpsData] = await Promise.all([
+      const [countriesData, projectsData] = await Promise.all([
         getCountries(),
-        getAllCmps()
+        fetchAllProjects()
       ]);
       setCountries(countriesData);
-      setCmps(cmpsData);
+      setProjects(projectsData);
     } catch (err) {
       console.error("Error loading data:", err);
       setError(err instanceof Error ? err.message : "Failed to load data");
@@ -102,7 +95,7 @@ export default function Explore() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">CMP Explorer</h1>
         <p className="text-muted-foreground mb-4">
-          Explore {cmps.length} CMPs across {countries.length} countries
+          Explore {projects.length} projects across {countries.length} countries
         </p>
         
         <SegmentedControl
@@ -127,10 +120,10 @@ export default function Explore() {
       ) : (
         <div className="space-y-4">
           {countries
-            .filter(country => groupedCmps[country.code]?.length > 0)
+            .filter(country => groupedProjects[country.code]?.length > 0)
             .sort((a, b) => b.total - a.total)
             .map(country => {
-              const countryCmps = groupedCmps[country.code] || [];
+              const countryProjects = groupedProjects[country.code] || [];
               const isOpen = openCountries[country.code] || false;
               
               return (
@@ -147,15 +140,12 @@ export default function Explore() {
                               {country.name} ({country.code})
                             </CardTitle>
                             <Badge variant="secondary">
-                              {countryCmps.length} CMP{countryCmps.length !== 1 ? 's' : ''}
+                              {countryProjects.length} project{countryProjects.length !== 1 ? 's' : ''}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-green-600">
-                              {countryCmps.filter(c => c.published).length} Published
-                            </Badge>
-                            <Badge variant="outline" className="text-orange-600">
-                              {countryCmps.filter(c => !c.published).length} Unpublished
+                            <Badge variant="outline">
+                              {countryProjects.length} total projects
                             </Badge>
                             {isOpen ? (
                               <ChevronUp className="h-4 w-4" />
@@ -170,31 +160,28 @@ export default function Explore() {
                     <CollapsibleContent>
                       <CardContent className="pt-0">
                         <div className="grid gap-2">
-                          {countryCmps
-                            .sort((a, b) => a.name.localeCompare(b.name))
-                            .map(cmp => (
+                          {countryProjects
+                            .sort((a, b) => a.name_raw.localeCompare(b.name_raw))
+                            .map(project => (
                               <div 
-                                key={cmp.id}
+                                key={project.project_id}
                                 className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
                               >
                                 <div className="flex items-center gap-3">
                                   <div>
-                                    <div className="font-medium">{cmp.name}</div>
+                                    <div className="font-medium">{project.name_raw}</div>
                                     <div className="text-sm text-muted-foreground">
-                                      {cmp.published ? (
-                                        <span className="text-green-600">✅ Published</span>
-                                      ) : (
-                                        <span className="text-orange-600">⏳ Unpublished</span>
-                                      )}
+                                      {project.city && <span>📍 {project.city}</span>}
+                                      {project.unit_code && <span className="ml-2">🏢 {project.unit_code}</span>}
                                     </div>
                                   </div>
                                 </div>
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => navigate(`/cmp/${cmp.id}`)}
+                                  onClick={() => window.open(`https://construction.autodesk.com/projects/${project.project_id}`, '_blank')}
                                 >
-                                  Open
+                                  View Project
                                 </Button>
                               </div>
                             ))}
