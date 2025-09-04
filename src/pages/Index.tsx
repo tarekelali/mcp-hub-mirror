@@ -1,12 +1,25 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Map, Building2, ArrowRight, Settings } from "lucide-react";
+import { Map, Building2, ArrowRight, Settings, Info, AlertCircle } from "lucide-react";
 import { APSStatusWidget } from "../components/APSStatusWidget";
 import { DebugPanel } from "../components/DebugPanel";
+import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
+import { useState, useEffect } from "react";
 
 export default function Index() {
   const navigate = useNavigate();
+  const [apsConnected, setApsConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check APS connection status
+    fetch("https://kuwrhanybqhfnwvshedl.functions.supabase.co/auth-aps-status", {
+      credentials: 'include'
+    })
+    .then(res => res.json())
+    .then(data => setApsConnected(data.connected))
+    .catch(() => setApsConnected(false));
+  }, []);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -22,6 +35,27 @@ export default function Index() {
             <APSStatusWidget onDataRefreshed={() => window.location.reload()} />
           </div>
         </div>
+        
+        {/* Guidance Banner */}
+        {apsConnected === false && (
+          <Alert className="mt-6 max-w-2xl mx-auto">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Getting Started</AlertTitle>
+            <AlertDescription>
+              To view project data and maps, please connect to Autodesk above, then click "Refresh Data" to sync your projects.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {apsConnected === true && (
+          <Alert className="mt-6 max-w-2xl mx-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Data Status</AlertTitle>
+            <AlertDescription>
+              If maps appear empty, click "Refresh Data" above to sync the latest project information from Autodesk.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
