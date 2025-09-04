@@ -1,6 +1,6 @@
-export const BASE = import.meta.env.VITE_FUNCTIONS_BASE || (window.location.hostname === "localhost"
-  ? "http://127.0.0.1:54321"
-  : "https://kuwrhanybqhfnwvshedl.functions.supabase.co");
+import { FUNCTIONS_BASE } from './functions-base';
+
+export const BASE = FUNCTIONS_BASE;
 
 export async function getCountries() {
   const r = await fetch(`${BASE}/api-countries`);

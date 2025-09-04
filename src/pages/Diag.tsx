@@ -2,11 +2,9 @@ import React from "react";
 import { tokenManager } from "../lib/tokenManager";
 import { getViewerToken } from "../../packages/aps-clients/src/viewer";
 
-const FNS =
-  import.meta.env.VITE_FUNCTIONS_BASE ||
-  (window.location.hostname === "localhost"
-    ? "http://127.0.0.1:54321"
-    : "https://kuwrhanybqhfnwvshedl.functions.supabase.co");
+import { FUNCTIONS_BASE } from "../lib/functions-base";
+
+const FNS = FUNCTIONS_BASE;
 const PILOT_CMP = "11111111-1111-1111-1111-111111111111"; // seeded CMP id
 
 export default function Diag() {

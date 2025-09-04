@@ -1,6 +1,8 @@
+import { FUNCTIONS_BASE } from './functions-base';
+
 // Temporary debug utility to test API connectivity
 export async function debugApiConnection() {
-  const baseUrl = "https://kuwrhanybqhfnwvshedl.functions.supabase.co";
+  const baseUrl = FUNCTIONS_BASE;
   
   try {
     console.log("Testing API connectivity...");

@@ -1,14 +1,18 @@
-// Import function base URL utility
-function getFunctionsBaseUrl(): string {
-  function isLocalhost(hostname: string): boolean {
-    return hostname === "localhost" || 
-           hostname === "127.0.0.1" || 
-           hostname === "[::1]" ||
-           hostname.startsWith("localhost:") ||
-           hostname.startsWith("127.0.0.1:") ||
-           hostname.startsWith("[::1]:");
-  }
+/**
+ * Centralized function base URL utility
+ * Handles localhost, 127.0.0.1, and [::1] (including /functions/v1 for local development)
+ */
 
+function isLocalhost(hostname: string): boolean {
+  return hostname === "localhost" || 
+         hostname === "127.0.0.1" || 
+         hostname === "[::1]" ||
+         hostname.startsWith("localhost:") ||
+         hostname.startsWith("127.0.0.1:") ||
+         hostname.startsWith("[::1]:");
+}
+
+export function getFunctionsBaseUrl(): string {
   // Check for explicit environment override first
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_FUNCTIONS_BASE) {
     return import.meta.env.VITE_FUNCTIONS_BASE;
@@ -31,8 +35,4 @@ function getFunctionsBaseUrl(): string {
   return "https://kuwrhanybqhfnwvshedl.functions.supabase.co";
 }
 
-const FNS = getFunctionsBaseUrl();
-
-export function getViewerToken() {
-  return fetch(`${FNS}/api-viewer-sign/api/viewer/sign`, { method: "POST" }).then(r => r.json());
-}
+export const FUNCTIONS_BASE = getFunctionsBaseUrl();
