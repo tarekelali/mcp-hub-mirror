@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Map, Building2, ArrowRight, Settings } from "lucide-react";
+import { APSStatusWidget } from "../components/APSStatusWidget";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -13,6 +14,13 @@ export default function Index() {
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Explore global construction projects through interactive maps, detailed project listings, and comprehensive analytics.
         </p>
+        
+        <div className="mt-6 max-w-md mx-auto">
+          <div className="bg-card border rounded-lg p-4">
+            <h3 className="font-semibold text-sm mb-2">Autodesk Connection</h3>
+            <APSStatusWidget onDataRefreshed={() => window.location.reload()} />
+          </div>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">

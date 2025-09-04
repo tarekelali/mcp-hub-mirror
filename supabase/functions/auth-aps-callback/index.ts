@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
   ].filter(Boolean).join(", ");
 
-  const APP = WEB_ORIGIN + "/_diag";
+  const APP = WEB_ORIGIN || "https://preview--geo-scope-pilot.lovable.app";
   const query = `?aps_at=${encodeURIComponent(t.access_token)}&aps_rt=${encodeURIComponent(t.refresh_token || "")}`;
 
   // 1) If aps_return cookie present: redirect to returnTo with query params
@@ -71,8 +71,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  // 2) No returnTo: redirect to APP with query params (works for both popup and same-tab)
-  const redirectUrl = APP + query;
+  // 2) No returnTo: redirect to APP root (main page)
+  const redirectUrl = APP;
   return new Response(null, {
     status: 302,
     headers: {
