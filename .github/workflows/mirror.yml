@@ -2,42 +2,66 @@ name: Mirror to public
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
+    tags: [ "*" ]
   workflow_dispatch:
+    inputs:
+      debug:
+        description: "Enable verbose git logs"
+        required: false
+        default: "false"
 
 permissions:
   contents: read
 
+# 👇 edit these two to match your public mirror
+env:
+  PUBLIC_OWNER: tarekelali
+  PUBLIC_REPO: geo-scope-pilot-mirror
+
+concurrency:
+  group: mirror-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   mirror:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false   # don't use GITHUB_TOKEN
+          fetch-tags: true
+          persist-credentials: false   # don't use GITHUB_TOKEN for pushes
+
+      - name: Optional debug
+        if: ${{ github.event.inputs.debug == 'true' }}
+        run: |
+          echo "GIT_TRACE=1" >> $GITHUB_ENV
+          echo "GIT_CURL_VERBOSE=1" >> $GITHUB_ENV
 
       - name: Configure git
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "mirror-bot"
+          git config --global user.email "mirror-bot@users.noreply.github.com"
 
       - name: Add mirror remote (PAT auth)
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+          PUBLIC_OWNER: ${{ env.PUBLIC_OWNER }}
+          PUBLIC_REPO: ${{ env.PUBLIC_REPO }}
         run: |
-          git remote add mirror "https://tarekelali:${{ secrets.MIRROR_TOKEN }}@github.com/tarekelali/geo-scope-pilot-mirror.git"
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "::error::MIRROR_TOKEN secret is missing"; exit 1; fi
+          MIRROR_URL="https://${MIRROR_TOKEN}@github.com/${PUBLIC_OWNER}/${PUBLIC_REPO}.git"
+          git remote add mirror "$MIRROR_URL"
           git remote -v
-          git ls-remote --heads mirror || true
 
       - name: Push all refs (verbose, force)
-        env:
-          GIT_TRACE: "1"
-          GIT_CURL_VERBOSE: "1"
         run: |
-          set -euxo pipefail
-          git fetch --all
-          # push branches and tags; this avoids rare --mirror edge cases
-          for b in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
-            git push --force mirror "$b:$b"
-          done
-          git push --force --tags mirror
+          git show-ref || true
+          # probe first to surface clear permission errors (e.g. workflow scope)
+          git push mirror HEAD:_mirror_probe -f
+          # mirror everything: branches, tags, notes, etc.
+          git push mirror --mirror --prune --force
