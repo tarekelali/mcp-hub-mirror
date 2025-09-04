@@ -37,6 +37,9 @@ export function APSStatusWidget({ onDataRefreshed }: APSStatusWidgetProps) {
   };
 
   const handleConnect = () => {
+    // Clear any stale auth state before starting new auth flow
+    document.cookie = "aps_at=; Path=/; Max-Age=0";
+    document.cookie = "aps_rt=; Path=/; Max-Age=0";
     const currentUrl = window.location.href;
     const connectUrl = `${BASE}/auth-aps-start?return=${encodeURIComponent(currentUrl)}`;
     window.location.href = connectUrl;

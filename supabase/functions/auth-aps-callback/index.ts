@@ -1,6 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN } from "../_shared/env.ts";
 import { authCors } from "../_shared/cors.ts";
+import { setSessionCookie, readSessionCookie, ensureSession } from "../_shared/cookies.ts";
+import { encrypt } from "../_shared/crypto.ts";
 
 function getCookie(header: string| null, name: string) {
   return (`; ${header ?? ""}`).split(`; ${name}=`).pop()?.split(";")[0];
@@ -49,12 +52,40 @@ Deno.serve(async (req) => {
   const returnToCookie = getCookie(cookies, "aps_return");
   const returnTo = returnToCookie ? decodeURIComponent(returnToCookie) : null;
 
+  // Handle session management
+  const headers = new Headers();
+  const sessionId = readSessionCookie(req) || ensureSession(headers, null);
+  await setSessionCookie(headers, sessionId);
+
+  // Store encrypted refresh token in database
+  if (t.refresh_token) {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    
+    const refreshTokenEnc = await encrypt(t.refresh_token);
+    await supabase.from("editor_tokens").upsert({
+      session_id: sessionId,
+      refresh_token_enc: refreshTokenEnc,
+      scope: "data:read account:read viewables:read offline_access",
+      updated_at: new Date().toISOString()
+    });
+  }
+
   const setCookies = [
     `aps_at=${t.access_token}; Path=/; Secure; HttpOnly; SameSite=None; Max-Age=${Math.max(60, (t.expires_in ?? 3600) - 60)}`,
-    t.refresh_token ? `aps_rt=${t.refresh_token}; Path=/; Secure; HttpOnly; SameSite=None; Max-Age=2592000` : "",
     `aps_return=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=None`,
     `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
-  ].filter(Boolean).join(", ");
+  ].filter(Boolean);
+  
+  // Add session cookie to existing cookies
+  const allCookies = [...setCookies];
+  for (const [key, value] of headers.entries()) {
+    if (key.toLowerCase() === 'set-cookie') {
+      allCookies.push(value);
+    }
+  }
 
   const APP = WEB_ORIGIN || "https://preview--geo-scope-pilot.lovable.app";
   
@@ -78,7 +109,7 @@ Deno.serve(async (req) => {
     status: 302,
     headers: {
       "Location": redirectUrl,
-      "Set-Cookie": setCookies,
+      "Set-Cookie": allCookies.join(", "),
       ...corsHeaders
     }
   });
