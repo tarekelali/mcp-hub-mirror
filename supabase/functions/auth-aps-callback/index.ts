@@ -1,20 +1,20 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN } from "../_shared/env.ts";
-import { cors } from "../_shared/cors.ts";
-
-const ORIGIN = WEB_ORIGIN || "*";
-const CORS = cors(ORIGIN);
+import { authCors } from "../_shared/cors.ts";
 
 function getCookie(header: string| null, name: string) {
   return (`; ${header ?? ""}`).split(`; ${name}=`).pop()?.split(";")[0];
 }
 
-function html(body: string, extraHeaders: HeadersInit = {}) {
-  return new Response(body, { headers: { "content-type": "text/html", ...CORS, ...extraHeaders } });
+function html(body: string, corsHeaders: Record<string, string>, extraHeaders: HeadersInit = {}) {
+  return new Response(body, { headers: { "content-type": "text/html", ...corsHeaders, ...extraHeaders } });
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const origin = req.headers.get("origin") || "";
+  const corsHeaders = authCors(origin);
+  
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
   const stateCookie = getCookie(cookies, "aps_state");
 
   if (!code || !state || !stateCookie || state !== stateCookie) {
-    return html(`<p>OAuth failed (state/session).</p>`, {
+    return html(`<p>OAuth failed (state/session).</p>`, corsHeaders, {
       "Set-Cookie": `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`,
     });
   }
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
 
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
-    return html(`<pre>Token exchange failed: ${tokenRes.status}\n${text}</pre>`);
+    return html(`<pre>Token exchange failed: ${tokenRes.status}\n${text}</pre>`, corsHeaders);
   }
   const t = await tokenRes.json();
 
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       headers: {
         "Location": redirectUrl,
         "Set-Cookie": setCookies,
-        ...CORS
+        ...corsHeaders
       }
     });
   }
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     headers: {
       "Location": redirectUrl,
       "Set-Cookie": setCookies,
-      ...CORS
+      ...corsHeaders
     }
   });
 });

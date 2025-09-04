@@ -1,9 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { cors } from "../_shared/cors.ts";
-
-const WEB_ORIGIN = Deno.env.get("WEB_ORIGIN") || "*";
-const corsHeaders = cors(WEB_ORIGIN);
+import { dataCors } from "../_shared/cors.ts";
 
 type Cmp = { 
   id: string; 
@@ -14,6 +11,9 @@ type Cmp = {
 };
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get("origin") || "";
+  const corsHeaders = dataCors(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

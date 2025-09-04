@@ -1,18 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { APS_CLIENT_ID, WEB_ORIGIN, APS_SCOPES_3L } from "../_shared/env.ts";
-
-const ORIGIN = WEB_ORIGIN || "*";
-const cors = {
-  "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
-  "access-control-allow-methods": "GET, OPTIONS",
-  "access-control-allow-credentials": "true",
-};
+import { APS_CLIENT_ID, APS_SCOPES_3L } from "../_shared/env.ts";
+import { authCors } from "../_shared/cors.ts";
 
 Deno.serve((req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const origin = req.headers.get("origin") || "";
+  const corsHeaders = authCors(origin);
+  
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "GET") {
-    return new Response(JSON.stringify({ ok:false, code:"method_not_allowed" }), { status:405, headers: { "content-type":"application/json", ...cors }});
+    return new Response(JSON.stringify({ ok:false, code:"method_not_allowed" }), { status:405, headers: { "content-type":"application/json", ...corsHeaders }});
   }
 
   const url = new URL(req.url);
@@ -35,7 +31,7 @@ Deno.serve((req) => {
   
   const headers = new Headers({
     Location: authUrl.toString(),
-    ...cors,
+    ...corsHeaders,
     "Set-Cookie": setCookieHeader,
   });
 

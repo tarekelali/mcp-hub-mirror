@@ -1,16 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN, APS_SCOPES_2L } from "../_shared/env.ts";
+import { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_SCOPES_2L } from "../_shared/env.ts";
+import { cors } from "../_shared/cors.ts";
 
-const ORIGIN = WEB_ORIGIN || "*";
-const cors = {
-  "access-control-allow-origin": ORIGIN,
-  "access-control-allow-headers": "authorization, x-client-info, content-type, x-aps-at, x-aps-rt",
-  "access-control-allow-methods": "GET, OPTIONS",
-  "access-control-allow-credentials": "true",
-};
-
-function j(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...cors } });
+function j(body: unknown, status = 200, corsHeaders: Record<string, string>) {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...corsHeaders } });
 }
 
 function mask(v?: string) {
@@ -19,7 +12,10 @@ function mask(v?: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const origin = req.headers.get("origin") || "";
+  const corsHeaders = cors(origin);
+  
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   // Only proceed with token test if we have credentials
   let tokenStatus = 0;
@@ -48,10 +44,9 @@ Deno.serve(async (req) => {
     missing: {
       APS_CLIENT_ID: !APS_CLIENT_ID,
       APS_CLIENT_SECRET: !APS_CLIENT_SECRET,
-      WEB_ORIGIN: !WEB_ORIGIN,
     },
     token_status: tokenStatus,
     token_body: tokenBody,
     had_basic: hadBasic,
-  }, 200);
+  }, 200, corsHeaders);
 });
