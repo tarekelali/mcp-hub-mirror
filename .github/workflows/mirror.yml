@@ -1,0 +1,22 @@
+name: Mirror to public
+
+on:
+  push:
+    branches: [ main ]   # change if your default branch isn't 'main'
+  workflow_dispatch:      # lets you run it manually from the Actions tab
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to public mirror
+        run: |
+          git config user.name "mirror-bot"
+          git config user.email "mirror-bot@users.noreply.github.com"
+          git remote add mirror https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/tarekelali/geo-scope-pilot-mirror.git
+          git push --prune --mirror mirror
