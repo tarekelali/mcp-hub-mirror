@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppMap } from "@/components/AppMap";
 import { SegmentedControl } from "../../packages/ui/src/SegmentedControl";
+import { APSStatusWidget } from "@/components/APSStatusWidget";
 import { getCountries, fetchAllProjects, Project } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +94,9 @@ export default function Explore() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
+        <div className="flex justify-center mb-4">
+          <APSStatusWidget />
+        </div>
         <h1 className="text-3xl font-bold mb-2">CMP Explorer</h1>
         <p className="text-muted-foreground mb-4">
           Explore {projects.length} projects across {countries.length} countries
