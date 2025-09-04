@@ -29,8 +29,8 @@ export async function fetchAllProjects(): Promise<Project[]> {
     const response = await getProjects({ limit, offset });
     allProjects.push(...response.items);
     
-    if (!response.has_more) break;
-    offset += limit;
+    if (!response.has_more || response.items.length === 0) break;
+    offset += response.items.length; // Use actual items returned, not limit
   }
   
   return allProjects;
@@ -46,8 +46,8 @@ export async function fetchAllProjectsByCountry(countryCode: string): Promise<{ 
     const response = await getProjects({ country: countryCode, limit, offset });
     allProjects.push(...response.items);
     
-    if (!response.has_more) break;
-    offset += limit;
+    if (!response.has_more || response.items.length === 0) break;
+    offset += response.items.length; // Use actual items returned, not limit
   }
   
   return {

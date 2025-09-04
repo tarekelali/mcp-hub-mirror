@@ -125,18 +125,17 @@ Deno.serve(async (req) => {
     const results = [];
     
     for (const c of countries as CountryRow[]) {
-      const [{ count: total }, { count: pub }, { count: unpub }] = await Promise.all([
-        supabase.from("cmps").select("*", { count: "exact", head: true }).eq("country_code", c.code),
-        supabase.from("cmps").select("*", { count: "exact", head: true }).eq("country_code", c.code).eq("published", true),
-        supabase.from("cmps").select("*", { count: "exact", head: true }).eq("country_code", c.code).eq("published", false),
+      const [{ count: total }, { count: highConf }] = await Promise.all([
+        supabase.from("acc_projects").select("*", { count: "exact", head: true }).eq("country_code", c.code),
+        supabase.from("acc_projects").select("*", { count: "exact", head: true }).eq("country_code", c.code).gte("parse_confidence", 0.8),
       ]);
       results.push({ 
         code: c.code, 
         name: c.name, 
         centroid: normalizeCentroid((c as any).centroid),
         total: Number(total ?? 0), 
-        published: Number(pub ?? 0), 
-        unpublished: Number(unpub ?? 0) 
+        published: Number(highConf ?? 0), 
+        unpublished: Number((total ?? 0) - (highConf ?? 0)) 
       });
     }
     

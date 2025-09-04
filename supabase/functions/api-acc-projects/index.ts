@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     // Extract query parameters
     const countryCode = url.searchParams.get("country")?.toUpperCase();
     const searchQuery = url.searchParams.get("q");
-    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 200);
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 1000);
     const offset = parseInt(url.searchParams.get("offset") || "0");
 
     console.log(`Projects query: country=${countryCode}, search=${searchQuery}, limit=${limit}, offset=${offset}`);
