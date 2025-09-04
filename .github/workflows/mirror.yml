@@ -1,0 +1,36 @@
+name: Mirror to public
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Important: don't use the default GITHUB_TOKEN creds
+          persist-credentials: false
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add mirror remote
+        run: |
+          git remote add mirror "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/tarekelali/geo-scope-pilot-mirror.git"
+          git remote -v
+
+      - name: Push all refs to mirror (force)
+        run: |
+          set -euxo pipefail
+          git fetch --all
+          git push --prune --mirror --force mirror
