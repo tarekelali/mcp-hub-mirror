@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { BASE } from '@/lib/api';
 
 interface APSStatus {
   connected: boolean;
   via: string;
 }
 
-export function APSStatusWidget() {
+interface APSStatusWidgetProps {
+  onDataRefreshed?: () => void;
+}
+
+export function APSStatusWidget({ onDataRefreshed }: APSStatusWidgetProps) {
   const [status, setStatus] = useState<APSStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -19,7 +24,7 @@ export function APSStatusWidget() {
 
   const checkStatus = async () => {
     try {
-      const response = await fetch('https://kuwrhanybqhfnwvshedl.functions.supabase.co/auth-aps-status', {
+      const response = await fetch(`${BASE}/auth-aps-status`, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -33,7 +38,7 @@ export function APSStatusWidget() {
 
   const handleConnect = () => {
     const currentUrl = window.location.href;
-    const connectUrl = `https://kuwrhanybqhfnwvshedl.functions.supabase.co/auth-aps-start?return=${encodeURIComponent(currentUrl)}`;
+    const connectUrl = `${BASE}/auth-aps-start?return=${encodeURIComponent(currentUrl)}`;
     window.location.href = connectUrl;
   };
 
@@ -49,7 +54,7 @@ export function APSStatusWidget() {
 
     setRefreshing(true);
     try {
-      const response = await fetch('https://kuwrhanybqhfnwvshedl.functions.supabase.co/acc-projects-sync?triggered_by=manual', {
+      const response = await fetch(`${BASE}/acc-projects-sync?triggered_by=manual`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -59,6 +64,11 @@ export function APSStatusWidget() {
           title: "Data Refresh Started",
           description: "Syncing projects from Autodesk. This may take a minute.",
         });
+        
+        // Call the refresh callback if provided
+        setTimeout(() => {
+          onDataRefreshed?.();
+        }, 2000); // Give the backend 2 seconds to start processing
       } else {
         const error = await response.json();
         toast({
