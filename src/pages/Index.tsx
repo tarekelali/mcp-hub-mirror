@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Map, Building2, ArrowRight, Settings } from "lucide-react";
 import { APSStatusWidget } from "../components/APSStatusWidget";
+import { DebugPanel } from "../components/DebugPanel";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -92,6 +93,10 @@ export default function Index() {
         <p className="text-sm text-muted-foreground">
           Built with modern web technologies for seamless project exploration and analysis.
         </p>
+      </div>
+
+      <div className="mt-8">
+        <DebugPanel />
       </div>
     </div>
   );
