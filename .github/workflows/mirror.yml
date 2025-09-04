@@ -7,17 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       debug:
-        description: "Enable verbose git logs"
-        required: false
+        description: "Verbose git logs"
         default: "false"
 
 permissions:
   contents: read
 
-# 👇 edit these two to match your public mirror
 env:
   PUBLIC_OWNER: tarekelali
-  PUBLIC_REPO: geo-scope-pilot-mirror
+  PUBLIC_REPO:  geo-scope-pilot-mirror
 
 concurrency:
   group: mirror-${{ github.ref }}
@@ -33,9 +31,9 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-          persist-credentials: false   # don't use GITHUB_TOKEN for pushes
+          persist-credentials: false
 
-      - name: Optional debug
+      - name: Enable debug (optional)
         if: ${{ github.event.inputs.debug == 'true' }}
         run: |
           echo "GIT_TRACE=1" >> $GITHUB_ENV
@@ -43,25 +41,38 @@ jobs:
 
       - name: Configure git
         run: |
-          git config --global user.name "mirror-bot"
+          git config --global user.name  "mirror-bot"
           git config --global user.email "mirror-bot@users.noreply.github.com"
+          git config --global init.defaultBranch main
 
       - name: Add mirror remote (PAT auth)
         env:
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
           PUBLIC_OWNER: ${{ env.PUBLIC_OWNER }}
-          PUBLIC_REPO: ${{ env.PUBLIC_REPO }}
+          PUBLIC_REPO:  ${{ env.PUBLIC_REPO }}
         run: |
-          if [ -z "$MIRROR_TOKEN" ]; then
-            echo "::error::MIRROR_TOKEN secret is missing"; exit 1; fi
-          MIRROR_URL="https://${MIRROR_TOKEN}@github.com/${PUBLIC_OWNER}/${PUBLIC_REPO}.git"
+          set -euo pipefail
+          if [ -z "${MIRROR_TOKEN:-}" ]; then
+            echo "::error::MIRROR_TOKEN secret is missing"; exit 1
+          fi
+          # Use the recommended x-access-token username to avoid auth quirks
+          MIRROR_URL="https://x-access-token:${MIRROR_TOKEN}@github.com/${PUBLIC_OWNER}/${PUBLIC_REPO}.git"
           git remote add mirror "$MIRROR_URL"
           git remote -v
 
-      - name: Push all refs (verbose, force)
+          echo "Probing permissions on destination repo..."
+          # This creates/updates a throwaway branch to surface clear auth errors
+          git push mirror HEAD:_mirror_probe -f || {
+            echo "::error::Probe push failed. Most common reasons:"
+            echo "  • PAT lacks permission (needs Contents: write; often also Actions: write for workflow files)"
+            echo "  • PAT not allowed for this repo (check 'Only select repositories')"
+            echo "  • Branch protection on destination (even for force pushes)"
+            exit 1
+          }
+          git push mirror :_mirror_probe -f || true
+
+      - name: Push all refs (mirror)
         run: |
-          git show-ref || true
-          # probe first to surface clear permission errors (e.g. workflow scope)
-          git push mirror HEAD:_mirror_probe -f
-          # mirror everything: branches, tags, notes, etc.
+          set -euo pipefail
+          # Mirror everything: branches, tags, notes; prune remote deletions
           git push mirror --mirror --prune --force
