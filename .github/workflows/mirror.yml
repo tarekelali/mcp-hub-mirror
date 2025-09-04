@@ -7,15 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       debug:
-        description: "Verbose git logs"
+        description: "Enable verbose git logs"
+        required: false
         default: "false"
 
 permissions:
   contents: read
 
+# ⬇️ set your public repo here
 env:
   PUBLIC_OWNER: tarekelali
-  PUBLIC_REPO:  geo-scope-pilot-mirror
+  PUBLIC_REPO: geo-scope-pilot-mirror
 
 concurrency:
   group: mirror-${{ github.ref }}
@@ -24,7 +26,6 @@ concurrency:
 jobs:
   mirror:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
@@ -38,41 +39,53 @@ jobs:
         run: |
           echo "GIT_TRACE=1" >> $GITHUB_ENV
           echo "GIT_CURL_VERBOSE=1" >> $GITHUB_ENV
+          echo "GIT_TRACE_PACKET=1" >> $GITHUB_ENV
+          echo "GIT_TRACE_PERFORMANCE=1" >> $GITHUB_ENV
 
       - name: Configure git
         run: |
-          git config --global user.name  "mirror-bot"
+          git config --global user.name "mirror-bot"
           git config --global user.email "mirror-bot@users.noreply.github.com"
-          git config --global init.defaultBranch main
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Add mirror remote (PAT auth)
+      - name: Authenticate to github.com with PAT (extraheader)
         env:
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
-          PUBLIC_OWNER: ${{ env.PUBLIC_OWNER }}
-          PUBLIC_REPO:  ${{ env.PUBLIC_REPO }}
         run: |
-          set -euo pipefail
-          if [ -z "${MIRROR_TOKEN:-}" ]; then
-            echo "::error::MIRROR_TOKEN secret is missing"; exit 1
-          fi
-          # Use the recommended x-access-token username to avoid auth quirks
-          MIRROR_URL="https://x-access-token:${MIRROR_TOKEN}@github.com/${PUBLIC_OWNER}/${PUBLIC_REPO}.git"
-          git remote add mirror "$MIRROR_URL"
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "::error::MIRROR_TOKEN secret is missing"; exit 1; fi
+          AUTH=$(printf "x-access-token:%s" "$MIRROR_TOKEN" | base64)
+          git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH"
+
+      - name: Add mirror remote
+        env:
+          PUBLIC_OWNER: ${{ env.PUBLIC_OWNER }}
+          PUBLIC_REPO: ${{ env.PUBLIC_REPO }}
+        run: |
+          set -euxo pipefail
+          git remote remove mirror 2>/dev/null || true
+          git remote add mirror "https://github.com/${PUBLIC_OWNER}/${PUBLIC_REPO}.git"
           git remote -v
 
-          echo "Probing permissions on destination repo..."
-          # This creates/updates a throwaway branch to surface clear auth errors
-          git push mirror HEAD:_mirror_probe -f || {
-            echo "::error::Probe push failed. Most common reasons:"
-            echo "  • PAT lacks permission (needs Contents: write; often also Actions: write for workflow files)"
-            echo "  • PAT not allowed for this repo (check 'Only select repositories')"
-            echo "  • Branch protection on destination (even for force pushes)"
-            exit 1
-          }
-          git push mirror :_mirror_probe -f || true
+      - name: Probe permissions (show errors)
+        run: |
+          set -euxo pipefail
+          echo "::group::ls-remote"
+          git ls-remote --heads mirror || true
+          echo "::endgroup::"
+          echo "::group::probe-push"
+          set +e
+          git push mirror HEAD:_mirror_probe -f 2>&1 | tee /tmp/probe.log
+          status=${PIPESTATUS[0]}
+          echo "::endgroup::"
+          if [ $status -ne 0 ]; then
+            echo "::error::Probe push failed. See logs above (likely missing repo/workflow scope or wrong token)."
+            exit $status
+          fi
+          git push mirror :_mirror_probe || true
 
       - name: Push all refs (mirror)
         run: |
-          set -euo pipefail
-          # Mirror everything: branches, tags, notes; prune remote deletions
-          git push mirror --mirror --prune --force
+          set -euxo pipefail
+          git show-ref || true
+          git push mirror --mirror --prune -f
