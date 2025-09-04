@@ -23,7 +23,7 @@ export async function getCountryCmps(code: string) {
 export async function fetchAllProjects(): Promise<Project[]> {
   const allProjects: Project[] = [];
   let offset = 0;
-  const limit = 1000; // Large batch size for efficiency
+  const limit = 200; // Cap at 200 per server limit
   
   while (true) {
     const response = await getProjects({ limit, offset });
@@ -40,7 +40,7 @@ export async function fetchAllProjects(): Promise<Project[]> {
 export async function fetchAllProjectsByCountry(countryCode: string): Promise<{ country: string; projects: Project[] }> {
   const allProjects: Project[] = [];
   let offset = 0;
-  const limit = 1000;
+  const limit = 200; // Cap at 200 per server limit
   
   while (true) {
     const response = await getProjects({ country: countryCode, limit, offset });

@@ -111,56 +111,9 @@ Deno.serve(async (req) => {
       return json(response);
     }
     
-    // Fallback: compute counts on the fly
-    const { data: countries, error: cErr } = await supabase
-      .from("countries")
-      .select("code,name,centroid")
-      .order("code", { ascending: true });
-    if (cErr) {
-      console.error("Error fetching countries:", cErr);
-      return err(500, "countries_select_failed", cErr.message);
-    }
-    
-    console.log(`Computing counts for ${countries?.length || 0} countries`);
-    const results = [];
-    
-    for (const c of countries as CountryRow[]) {
-      const [{ count: total }, { count: highConf }] = await Promise.all([
-        supabase.from("acc_projects").select("*", { count: "exact", head: true }).eq("country_code", c.code),
-        supabase.from("acc_projects").select("*", { count: "exact", head: true }).eq("country_code", c.code).gte("parse_confidence", 0.8),
-      ]);
-      results.push({ 
-        code: c.code, 
-        name: c.name, 
-        centroid: normalizeCentroid((c as any).centroid),
-        total: Number(total ?? 0), 
-        published: Number(highConf ?? 0), 
-        unpublished: Number((total ?? 0) - (highConf ?? 0)) 
-      });
-    }
-    
-    console.log(`Returning ${results.length} countries with counts`);
-    
-    // Validate response schema
-    const validation = validateSchema(results, CountriesResponseSchema);
-    if (!validation.valid) {
-      console.error("Countries response schema validation failed:", validation.errors);
-      console.error("Sample result data:", JSON.stringify(results.slice(0, 2), null, 2));
-      // Instead of returning 500, filter out invalid items and continue
-      const validItems = results.filter((item, index) => {
-        const itemValidation = validateSchema([item], CountriesResponseSchema);
-        if (!itemValidation.valid) {
-          console.error(`Invalid fallback item at index ${index}:`, JSON.stringify(item, null, 2));
-          console.error(`Validation error:`, itemValidation.errors);
-          return false;
-        }
-        return true;
-      });
-      console.log(`Filtered ${results.length - validItems.length} invalid fallback items, returning ${validItems.length} valid items`);
-      return json(validItems);
-    }
-    
-    return json(results);
+    // No fallback - require materialized view
+    console.error("Country counts materialized view not available");
+    return err(503, "mv_unavailable", "Country counts not ready. Run acc-projects-sync.");
   }
 
   // GET /api/countries/cmps (all CMPs)

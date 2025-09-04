@@ -26,7 +26,7 @@ export default function Viewer() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: 16, borderBottom: "1px solid #e0e0e0" }}>
-        <h1 style={{ margin: 0, fontSize: "1.2em" }}>Sample Model Viewer</h1>
+        <h1 style={{ margin: 0, fontSize: "1.2em" }}>Model Viewer</h1>
         <p style={{ margin: "4px 0 0 0", fontSize: "0.9em", color: "#666" }}>
           URN: {urn.substring(0, 30)}...
         </p>

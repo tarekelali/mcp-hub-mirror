@@ -449,15 +449,11 @@ Deno.serve(async (req) => {
     ? paginatedItems[paginatedItems.length - 1].id 
     : null;
 
-  // Create sample array (first 3 items after filters)
-  const sample = filteredItems.slice(0, 3);
-
   await trackMetrics("aps-projects", "success");
   return j({ 
     ok: true, 
     items: paginatedItems,
     next_cursor: nextCursor,
-    total_estimate: filteredItems.length,
-    sample: sample
+    total_estimate: filteredItems.length
   });
 });

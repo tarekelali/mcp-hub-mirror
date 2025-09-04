@@ -1,7 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN, APS_SCOPES_3L } from "../_shared/env.ts";
+import { WEB_ORIGIN } from "../_shared/env.ts";
 import { authCors } from "../_shared/cors.ts";
+import { readSessionCookie } from "../_shared/cookies.ts";
+import { accessTokenForSession } from "../_shared/aps3l.ts";
 
 const ORIGIN = WEB_ORIGIN || "*";
 const CORS = authCors(ORIGIN);
@@ -119,30 +121,14 @@ function parseProjectName(name: string) {
   };
 }
 
-async function getAccessToken(): Promise<string | null> {
+async function verifyScopes(accessToken: string): Promise<boolean> {
   try {
-    const tokenRes = await fetch("https://developer.api.autodesk.com/authentication/v2/token", {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        "authorization": "Basic " + btoa(`${APS_CLIENT_ID}:${APS_CLIENT_SECRET}`),
-      },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        scope: APS_SCOPES_3L,
-      }),
+    const hubsRes = await fetch("https://developer.api.autodesk.com/project/v1/hubs", {
+      headers: { authorization: `Bearer ${accessToken}` }
     });
-
-    if (!tokenRes.ok) {
-      console.error(`Token fetch failed: ${tokenRes.status}`);
-      return null;
-    }
-
-    const token = await tokenRes.json();
-    return token.access_token;
-  } catch (error) {
-    console.error("Token fetch error:", error);
-    return null;
+    return hubsRes.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -199,7 +185,7 @@ class ThrottledAPICaller {
   }
 }
 
-async function ingestAllProjects(triggeredBy: string = 'manual') {
+async function ingestAllProjects(triggeredBy: string = 'manual', sessionId?: string) {
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   
   // Create ingest job record
@@ -221,9 +207,18 @@ async function ingestAllProjects(triggeredBy: string = 'manual') {
   console.log(`Starting ingest job ${jobId}`);
 
   try {
-    const accessToken = await getAccessToken();
-    if (!accessToken) {
-      throw new Error("Failed to get access token");
+    // Require 3-legged token - fail loudly if not available
+    if (!sessionId) {
+      throw new Error("Editor login required for ingest - no session");
+    }
+
+    const accessToken = await accessTokenForSession(sessionId);
+    console.log(`Got 3-legged token (length: ${accessToken.length})`);
+    
+    // Verify scopes before proceeding
+    const hasScopes = await verifyScopes(accessToken);
+    if (!hasScopes) {
+      throw new Error("Missing permissions: data:read viewables:read account:read");
     }
 
     const headers = { authorization: `Bearer ${accessToken}` };
@@ -254,15 +249,20 @@ async function ingestAllProjects(triggeredBy: string = 'manual') {
 
       let hasMore = true;
       let offset = 0;
-      const pageSize = 100;
+      const pageSize = 200; // Cap at 200 per spec
 
       while (hasMore) {
-        console.log(`Fetching projects page: offset=${offset}, limit=${pageSize}`);
+        console.log(`Hub ${hubId} page offset=${offset} size=200`);
         
         const projectsUrl = `https://developer.api.autodesk.com/project/v1/hubs/${hubId}/projects?limit=${pageSize}&offset=${offset}`;
         const projectsRes = await caller.fetch(projectsUrl, headers);
 
         if (!projectsRes.ok) {
+          if (projectsRes.status === 429) {
+            console.log(`Rate limited on hub ${hubId}, retrying with backoff...`);
+            await sleep(2000); // Wait 2 seconds on 429
+            continue;
+          }
           console.error(`Projects fetch failed for hub ${hubId}: ${projectsRes.status}`);
           totalErrors++;
           break;
@@ -271,7 +271,7 @@ async function ingestAllProjects(triggeredBy: string = 'manual') {
         const projects = await projectsRes.json();
         const projectData = projects?.data || [];
         
-        console.log(`Fetched ${projectData.length} projects from hub ${hubId}`);
+        console.log(`Hub ${hubId} returned ${projectData.length} projects`);
 
         if (projectData.length === 0) {
           hasMore = false;
@@ -300,8 +300,9 @@ async function ingestAllProjects(triggeredBy: string = 'manual') {
             allProjects.push(projectRecord);
             totalProcessed++;
 
-            // Update job progress every 50 projects
-            if (totalProcessed % 50 === 0) {
+            // Update job progress every 100 projects
+            if (totalProcessed % 100 === 0) {
+              console.log(`Upserted ${totalProcessed} / total projects so far`);
               await supabase
                 .from("acc_ingest_jobs")
                 .update({
@@ -327,6 +328,7 @@ async function ingestAllProjects(triggeredBy: string = 'manual') {
     }
 
     console.log(`Parsed ${allProjects.length} projects, upserting to database...`);
+    console.log(`Final counts: ${totalProcessed} processed, ${totalErrors} errors`);
 
     // Batch upsert projects in chunks of 1000
     const chunkSize = 1000;
@@ -409,8 +411,22 @@ Deno.serve(async (req) => {
     
     console.log(`Starting ACC projects sync (triggered by: ${triggeredBy})`);
     
+    // Get session from cookie for 3-legged auth
+    const sessionId = await readSessionCookie(req);
+    if (!sessionId) {
+      console.error("Editor login required for ingest");
+      return new Response(JSON.stringify({
+        success: false,
+        error: "Editor login required for ingest",
+        code: "auth_required"
+      }), {
+        status: 401,
+        headers: { "content-type": "application/json", ...CORS }
+      });
+    }
+    
     // Start the ingestion process
-    const result = await ingestAllProjects(triggeredBy);
+    const result = await ingestAllProjects(triggeredBy, sessionId);
     
     return new Response(JSON.stringify({
       success: true,

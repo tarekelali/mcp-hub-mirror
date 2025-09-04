@@ -250,13 +250,6 @@ export default function Diag() {
             Hub: {out.firstHubName}
           </div>
         )}
-        {out?.projects?.body?.sample?.length > 0 && (
-          <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
-            Sample: {out.projects.body.sample.map((p: any) => 
-              `${p.name} (${p.country_name || p.country || 'N/A'}/${p.unit || 'N/A'}/${p.city || 'N/A'})`
-            ).join(', ')}
-          </div>
-        )}
       </div>
 
       {/* Catalog Projects Count */}
@@ -321,14 +314,6 @@ export default function Diag() {
         >
           Clear APS
         </button>
-        {out?.projects?.body?.sample?.length > 0 && (
-          <button 
-            onClick={openSampleModel}
-            style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#9944cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
-          >
-            Open sample model
-          </button>
-        )}
         <button 
           onClick={() => window.open('/projects', '_blank')}
           style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#0066cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
