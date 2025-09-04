@@ -5,8 +5,7 @@ import { authCors } from "../_shared/cors.ts";
 import { readSessionCookie } from "../_shared/cookies.ts";
 import { accessTokenForSession } from "../_shared/aps3l.ts";
 
-const ORIGIN = WEB_ORIGIN || "*";
-const CORS = authCors(ORIGIN);
+// Dynamic CORS based on request origin
 
 // Enhanced country mapping with IKEA-specific aliases
 const COUNTRY_MAP: Record<string,string> = {
@@ -397,11 +396,14 @@ async function ingestAllProjects(triggeredBy: string = 'manual', sessionId?: str
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const origin = req.headers.get("origin") || "";
+  const corsHeaders = authCors(origin);
+  
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "method_not_allowed" }), {
       status: 405,
-      headers: { "content-type": "application/json", ...CORS }
+      headers: { "content-type": "application/json", ...corsHeaders }
     });
   }
 
@@ -421,7 +423,7 @@ Deno.serve(async (req) => {
         code: "auth_required"
       }), {
         status: 401,
-        headers: { "content-type": "application/json", ...CORS }
+        headers: { "content-type": "application/json", ...corsHeaders }
       });
     }
     
@@ -434,7 +436,7 @@ Deno.serve(async (req) => {
       ...result
     }), {
       status: 200,
-      headers: { "content-type": "application/json", ...CORS }
+      headers: { "content-type": "application/json", ...corsHeaders }
     });
 
   } catch (error) {
@@ -445,7 +447,7 @@ Deno.serve(async (req) => {
       error: String(error)
     }), {
       status: 500,
-      headers: { "content-type": "application/json", ...CORS }
+      headers: { "content-type": "application/json", ...corsHeaders }
     });
   }
 });

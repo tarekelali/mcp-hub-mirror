@@ -274,7 +274,7 @@ export default function Diag() {
           }}
           style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#6600cc", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
         >
-          Trigger Ingest
+          Refresh Data
         </button>
         {out?.countries?.body?.length > 0 && (
           <div style={{ marginTop: 4, fontSize: "12px", color: "#666" }}>
