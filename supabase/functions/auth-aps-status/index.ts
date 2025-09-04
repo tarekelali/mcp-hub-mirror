@@ -1,11 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { readSessionCookie } from "../_shared/cookies.ts";
-import { WEB_ORIGIN } from "../_shared/env.ts";
 import { authCors } from "../_shared/cors.ts";
-
-const ORIGIN = WEB_ORIGIN || "*";
-const CORS = authCors(ORIGIN);
 
 function readAT(req: Request): string | null {
   const auth = req.headers.get("authorization") || "";
@@ -22,7 +18,10 @@ function getCookie(header: string | null, name: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const origin = req.headers.get("origin") || "";
+  const corsHeaders = authCors(origin);
+  
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const hdrAT = readAT(req);
   const hdrRT = readRT(req);
@@ -67,5 +66,5 @@ Deno.serve(async (req) => {
     has_rt_header: !!hdrRT,
     has_at_cookie: !!cookieAt,
     has_rt_cookie: !!cookieRt
-  }), { headers: { "content-type":"application/json", ...CORS } });
+  }), { headers: { "content-type":"application/json", ...corsHeaders } });
 });

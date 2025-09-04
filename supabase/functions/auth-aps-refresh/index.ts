@@ -1,9 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { APS_CLIENT_ID, APS_CLIENT_SECRET, WEB_ORIGIN } from "../_shared/env.ts";
-import { cors } from "../_shared/cors.ts";
-
-const ORIGIN = WEB_ORIGIN || "*";
-const CORS = cors(ORIGIN);
+import { APS_CLIENT_ID, APS_CLIENT_SECRET } from "../_shared/env.ts";
+import { authCors } from "../_shared/cors.ts";
 
 function getCookie(header: string | null, name: string) {
   return (`; ${header ?? ""}`).split(`; ${name}=`).pop()?.split(";")[0];
@@ -14,11 +11,14 @@ function readRT(req: Request): string | null {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const origin = req.headers.get("origin") || "";
+  const corsHeaders = authCors(origin);
+  
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "method_not_allowed" }), {
       status: 405,
-      headers: { "content-type": "application/json", ...CORS }
+      headers: { "content-type": "application/json", ...corsHeaders }
     });
   }
 
@@ -34,9 +34,7 @@ Deno.serve(async (req) => {
       status: 401,
       headers: { 
         "content-type": "application/json",
-        "cache-control": "no-store",
-        "referrer-policy": "no-referrer",
-        ...CORS 
+        ...corsHeaders
       }
     });
   }
@@ -61,9 +59,7 @@ Deno.serve(async (req) => {
         status: 502,
         headers: { 
           "content-type": "application/json",
-          "cache-control": "no-store",
-          "referrer-policy": "no-referrer",
-          ...CORS 
+          ...corsHeaders
         }
       });
     }
@@ -83,10 +79,8 @@ Deno.serve(async (req) => {
       status: 200,
       headers: {
         "content-type": "application/json",
-        "cache-control": "no-store",
-        "referrer-policy": "no-referrer",
         "set-cookie": setCookies,
-        ...CORS
+        ...corsHeaders
       }
     });
 
@@ -96,9 +90,7 @@ Deno.serve(async (req) => {
       status: 500,
       headers: { 
         "content-type": "application/json",
-        "cache-control": "no-store",
-        "referrer-policy": "no-referrer",
-        ...CORS 
+        ...corsHeaders
       }
     });
   }
