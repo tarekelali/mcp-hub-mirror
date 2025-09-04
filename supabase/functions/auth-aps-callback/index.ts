@@ -46,7 +46,8 @@ Deno.serve(async (req) => {
   }
   const t = await tokenRes.json();
 
-  const returnTo = getCookie(cookies, "aps_return");
+  const returnToCookie = getCookie(cookies, "aps_return");
+  const returnTo = returnToCookie ? decodeURIComponent(returnToCookie) : null;
 
   const setCookies = [
     `aps_at=${t.access_token}; Path=/; Secure; HttpOnly; SameSite=None; Max-Age=${Math.max(60, (t.expires_in ?? 3600) - 60)}`,
@@ -56,23 +57,23 @@ Deno.serve(async (req) => {
   ].filter(Boolean).join(", ");
 
   const APP = WEB_ORIGIN || "https://preview--geo-scope-pilot.lovable.app";
-  const query = `?aps_at=${encodeURIComponent(t.access_token)}&aps_rt=${encodeURIComponent(t.refresh_token || "")}`;
-
-  // 1) If aps_return cookie present: redirect to returnTo with query params
+  
+  // Determine redirect target
+  let redirectUrl = APP; // Default to main app
+  
   if (returnTo) {
-    const redirectUrl = returnTo + query;
-    return new Response(null, {
-      status: 302,
-      headers: {
-        "Location": redirectUrl,
-        "Set-Cookie": setCookies,
-        ...corsHeaders
+    // Validate and normalize the returnTo URL
+    try {
+      const returnURL = new URL(returnTo, APP);
+      // Only allow same-origin redirects for security
+      if (returnURL.origin === new URL(APP).origin) {
+        redirectUrl = returnURL.toString();
       }
-    });
+    } catch {
+      // Invalid URL, use default
+    }
   }
 
-  // 2) No returnTo: redirect to APP root (main page)
-  const redirectUrl = APP;
   return new Response(null, {
     status: 302,
     headers: {
