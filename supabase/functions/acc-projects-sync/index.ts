@@ -364,11 +364,19 @@ async function ingestAllProjects(triggeredBy: string = 'manual', sessionId?: str
       }
     }
 
-    // Refresh materialized view
+    // Refresh materialized view to update country counts
     console.log("Refreshing country counts materialized view...");
-    const { error: refreshError } = await supabase.rpc('refresh_acc_country_counts');
-    if (refreshError) {
-      console.error("Failed to refresh materialized view:", refreshError);
+    try {
+      const { error: refreshError } = await supabase.rpc('refresh_acc_country_counts');
+      if (refreshError) {
+        console.error("Failed to refresh materialized view:", refreshError);
+        // Don't fail the whole sync for MV refresh issues
+      } else {
+        console.log("Successfully refreshed materialized view");
+      }
+    } catch (mvError) {
+      console.error("Exception refreshing materialized view:", mvError);
+      // Don't fail the whole sync for MV refresh issues
     }
 
     // Mark job as completed

@@ -91,6 +91,19 @@ export default function Explore() {
         }
       );
       
+      if (countriesResponse.status === 503) {
+        // MV unavailable - fallback to computing from projects
+        console.log("MV unavailable, computing countries from projects");
+        setUsingFallback(true);
+        
+        const projectsData = await fetchAllProjects();
+        const computedCountries = computeCountriesFromProjects(projectsData);
+        
+        setCountries(computedCountries);
+        setProjects(projectsData);
+        return;
+      }
+      
       if (!countriesResponse.ok) {
         throw new Error(`Countries API failed: ${countriesResponse.status}`);
       }
@@ -154,7 +167,7 @@ export default function Explore() {
           <Alert className="mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Using live project counts (catalog rebuilding). Run <strong>Refresh Data</strong> to persist country catalog.
+              Live rollup (temporary) — run <strong>Refresh Data</strong> to cache country counts.
             </AlertDescription>
           </Alert>
         )}

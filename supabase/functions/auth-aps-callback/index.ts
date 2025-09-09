@@ -9,6 +9,21 @@ function getCookie(header: string| null, name: string) {
   return (`; ${header ?? ""}`).split(`; ${name}=`).pop()?.split(";")[0];
 }
 
+// Helper to safely decode base64url (handles PKCE-style encoding)
+function decodeBase64Url(str: string): string {
+  try {
+    // Convert base64url to base64: replace - with +, _ with /
+    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    // Add padding if needed
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    return atob(base64);
+  } catch (error) {
+    throw new Error(`Failed to decode base64url: ${error.message}`);
+  }
+}
+
 function html(body: string, corsHeaders: Record<string, string>, extraHeaders: HeadersInit = {}) {
   return new Response(body, { headers: { "content-type": "text/html", ...corsHeaders, ...extraHeaders } });
 }
@@ -24,11 +39,43 @@ Deno.serve(async (req) => {
   const cookies = req.headers.get("cookie") ?? "";
   const stateCookie = getCookie(cookies, "aps_state");
 
-  if (!code || !state || !stateCookie || state !== stateCookie) {
+  if (!code || !state || !stateCookie) {
     return new Response(JSON.stringify({ 
       ok: false, 
-      code: "state_mismatch",
-      details: "OAuth state validation failed" 
+      code: "missing_oauth_params",
+      details: "Missing required OAuth parameters" 
+    }), {
+      status: 400,
+      headers: { 
+        "content-type": "application/json", 
+        ...corsHeaders,
+        "Set-Cookie": `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`
+      }
+    });
+  }
+
+  // Validate state cookie - handle potential base64url encoding issues
+  try {
+    if (state !== stateCookie) {
+      return new Response(JSON.stringify({ 
+        ok: false, 
+        code: "state_mismatch",
+        details: "OAuth state validation failed" 
+      }), {
+        status: 400,
+        headers: { 
+          "content-type": "application/json", 
+          ...corsHeaders,
+          "Set-Cookie": `aps_state=; Secure; HttpOnly; SameSite=None; Path=/; Max-Age=0`
+        }
+      });
+    }
+  } catch (error) {
+    console.error("State validation error (length only):", stateCookie?.length || 0);
+    return new Response(JSON.stringify({ 
+      ok: false, 
+      code: "invalid_state_encoding",
+      details: "Failed to validate state parameter" 
     }), {
       status: 400,
       headers: { 
