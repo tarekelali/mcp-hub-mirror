@@ -78,7 +78,23 @@ Deno.serve(async (req) => {
       .select("country_code, country_name, total_projects, high_confidence_projects, centroid")
       .order("total_projects", { ascending: false });
 
-    if (!accErr && Array.isArray(accCountries) && accCountries.length > 0) {
+    if (accErr || !Array.isArray(accCountries) || accCountries.length === 0) {
+      console.log("Materialized view unavailable or empty, returning 503");
+      return new Response(JSON.stringify({ 
+        ok: false, 
+        code: "mv_unavailable",
+        message: "No country data yet - Connect Autodesk and run Refresh Data"
+      }), {
+        status: 503,
+        headers: { 
+          "content-type": "application/json", 
+          "x-advice": "Run acc-projects-sync",
+          ...corsHeaders 
+        }
+      });
+    }
+    
+    if (Array.isArray(accCountries) && accCountries.length > 0) {
       console.log(`Using ACC materialized view: ${accCountries.length} countries`);
       const response = accCountries.map(country => ({
         code: country.country_code,

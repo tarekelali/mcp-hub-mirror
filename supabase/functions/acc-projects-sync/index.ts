@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
   
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "method_not_allowed" }), {
+    return new Response(JSON.stringify({ ok: false, code: "method_not_allowed" }), {
       status: 405,
       headers: { "content-type": "application/json", ...corsHeaders }
     });
@@ -440,11 +440,11 @@ Deno.serve(async (req) => {
     // Get session from cookie for 3-legged auth
     const sessionId = await readSessionCookie(req);
     if (!sessionId) {
-      console.error("Editor login required for ingest");
+      console.error("3-legged authentication required for ingest");
       return new Response(JSON.stringify({
-        success: false,
-        error: "Editor login required for ingest",
-        code: "auth_required"
+        ok: false,
+        code: "auth_required",
+        message: "3-legged authentication required - please connect to Autodesk first"
       }), {
         status: 401,
         headers: { "content-type": "application/json", ...corsHeaders }
