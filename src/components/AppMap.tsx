@@ -2,6 +2,7 @@ import React from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { fetchAllProjectsByCountry } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 type C = { 
   code: string; 
@@ -25,10 +26,20 @@ export function AppMap({
   React.useEffect(() => {
     if (!ref.current || mapRef.current) return;
     
-    // Set Mapbox token
-    (mapboxgl as any).accessToken = 'pk.eyJ1IjoidGFyZWtlbGFsaSIsImEiOiJjaXUzdGF2anUwMDFhMzNsMG1nZzc2OTM1In0.OiE6a8DGTJjxT13vloRYEQ';
-    
-    const map = new mapboxgl.Map({
+    // Fetch Mapbox token securely and initialize map
+    const initializeMap = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('mapbox-token');
+        
+        if (error || !data?.token) {
+          console.error('Failed to fetch Mapbox token:', error);
+          return;
+        }
+        
+        // Set Mapbox token
+        (mapboxgl as any).accessToken = data.token;
+        
+        const map = new mapboxgl.Map({
       container: ref.current,
       style: "mapbox://styles/mapbox/light-v11",
       center: [12, 20],
@@ -163,11 +174,17 @@ export function AppMap({
         }
       });
 
-      map.on("mouseenter", "country-dots", () => map.getCanvas().style.cursor = "pointer");
-      map.on("mouseleave", "country-dots", () => map.getCanvas().style.cursor = "");
-    });
+        map.on("mouseenter", "country-dots", () => map.getCanvas().style.cursor = "pointer");
+        map.on("mouseleave", "country-dots", () => map.getCanvas().style.cursor = "");
+      });
 
-    return () => map.remove();
+        return () => map.remove();
+      } catch (error) {
+        console.error('Error initializing map:', error);
+      }
+    };
+    
+    initializeMap();
   }, [countries]);
 
   return (
