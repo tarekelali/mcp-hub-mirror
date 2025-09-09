@@ -105,15 +105,76 @@ Deno.serve(async (req) => {
           return true;
         });
         console.log(`Filtered ${response.length - validItems.length} invalid items, returning ${validItems.length} valid items`);
-        return json(validItems);
+        return jsonWithSource(validItems, "mv");
       }
       
-      return json(response);
+      return jsonWithSource(response, "mv");
     }
     
-    // No fallback - require materialized view
-    console.error("Country counts materialized view not available");
-    return err(503, "mv_unavailable", "Country counts not ready. Run acc-projects-sync.");
+    // Fallback: compute from acc_projects
+    console.log("Materialized view empty/unavailable, falling back to acc_projects computation");
+    const { data: projects, error: projectsErr } = await serviceSupabase
+      .from("acc_projects")
+      .select("country_code, country_name, parse_confidence");
+    
+    if (projectsErr) {
+      console.error("Fallback projects query failed:", projectsErr);
+      return err(500, "fallback_failed", "Cannot compute country counts");
+    }
+    
+    // Group and count by country
+    const countryGroups: Record<string, { name: string; total: number; published: number }> = {};
+    
+    (projects || []).forEach(project => {
+      const code = project.country_code;
+      if (!code) return;
+      
+      if (!countryGroups[code]) {
+        countryGroups[code] = {
+          name: project.country_name || code,
+          total: 0,
+          published: 0
+        };
+      }
+      
+      countryGroups[code].total++;
+      if ((project.parse_confidence || 0) >= 0.7) {
+        countryGroups[code].published++;
+      }
+    });
+    
+    // Get centroids from countries table
+    const { data: countriesData } = await serviceSupabase
+      .from("countries")
+      .select("code, name, centroid")
+      .in("code", Object.keys(countryGroups));
+    
+    const centroidMap: Record<string, any> = {};
+    (countriesData || []).forEach(country => {
+      centroidMap[country.code] = country.centroid;
+      // Use countries table name if available and better than acc_projects name
+      if (country.name && country.name !== country.code) {
+        const group = countryGroups[country.code];
+        if (group && (group.name === country.code || group.name.length < country.name.length)) {
+          group.name = country.name;
+        }
+      }
+    });
+    
+    // Build response
+    const fallbackResponse = Object.entries(countryGroups)
+      .map(([code, group]) => ({
+        code,
+        name: group.name,
+        total: group.total,
+        published: group.published,
+        unpublished: group.total - group.published,
+        centroid: normalizeCentroid(centroidMap[code])
+      }))
+      .sort((a, b) => b.total - a.total);
+    
+    console.log(`Fallback computed ${fallbackResponse.length} countries from ${projects?.length || 0} projects`);
+    return jsonWithSource(fallbackResponse, "fallback");
   }
 
   // GET /api/countries/cmps (all CMPs)
@@ -179,6 +240,18 @@ Deno.serve(async (req) => {
       headers: { 
         "content-type": "application/json", 
         "cache-control": "public, s-maxage=300",
+        ...corsHeaders 
+      },
+    });
+  }
+  
+  function jsonWithSource(body: unknown, source: "mv" | "fallback", status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 
+        "content-type": "application/json", 
+        "cache-control": "public, s-maxage=300",
+        "x-mv-source": source,
         ...corsHeaders 
       },
     });

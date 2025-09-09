@@ -83,52 +83,31 @@ export default function Explore() {
       setLoading(true);
       setUsingFallback(false);
       
-      // Try to get countries from materialized view first
-      try {
-        const [countriesData, projectsData] = await Promise.all([
-          getCountries(),
-          fetchAllProjects()
-        ]);
-        setCountries(countriesData);
-        setProjects(projectsData);
-        return;
-      } catch (countriesError) {
-        console.log("Countries API failed, checking if it's mv_unavailable...", countriesError);
-        
-        // Check if it's specifically the mv_unavailable error
-        const errorMessage = countriesError instanceof Error ? countriesError.message : String(countriesError);
-        if (errorMessage.includes('mv_unavailable') || errorMessage.includes('503')) {
-          console.log("Materialized view unavailable, falling back to live computation...");
-          setUsingFallback(true);
-          
-          // Fallback: get projects and optionally CMPs, compute countries locally
-          const [projectsData, cmpsData] = await Promise.all([
-            fetchAllProjects(),
-            getAllCmps().catch(() => []) // Optional - don't fail if CMPs aren't available
-          ]);
-          
-          // Add centroid data from CMPs to improve map display
-          const centroidMap: Record<string, { lat: number; lng: number }> = {};
-          cmpsData.forEach(cmp => {
-            if (cmp.centroid && cmp.country_code) {
-              centroidMap[cmp.country_code] = cmp.centroid;
-            }
-          });
-          
-          // Compute countries from projects
-          const computedCountries = computeCountriesFromProjects(projectsData).map(country => ({
-            ...country,
-            centroid: centroidMap[country.code] || country.centroid
-          }));
-          
-          setCountries(computedCountries);
-          setProjects(projectsData);
-          return;
+      // Fetch countries with credentials to get x-mv-source header
+      const countriesResponse = await fetch(
+        `https://kuwrhanybqhfnwvshedl.functions.supabase.co/api-countries`,
+        { 
+          credentials: 'include'
         }
-        
-        // Re-throw if it's not the expected error
-        throw countriesError;
+      );
+      
+      if (!countriesResponse.ok) {
+        throw new Error(`Countries API failed: ${countriesResponse.status}`);
       }
+      
+      const countriesData = await countriesResponse.json();
+      const mvSource = countriesResponse.headers.get('x-mv-source');
+      
+      // Check if using fallback
+      if (mvSource === 'fallback') {
+        setUsingFallback(true);
+      }
+      
+      // Get projects data
+      const projectsData = await fetchAllProjects();
+      
+      setCountries(countriesData);
+      setProjects(projectsData);
     } catch (err) {
       console.error("Error loading data:", err);
       setError(err instanceof Error ? err.message : "Failed to load data");

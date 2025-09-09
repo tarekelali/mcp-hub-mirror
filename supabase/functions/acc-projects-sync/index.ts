@@ -208,16 +208,31 @@ async function ingestAllProjects(triggeredBy: string = 'manual', sessionId?: str
   try {
     // Require 3-legged token - fail loudly if not available
     if (!sessionId) {
-      throw new Error("Editor login required for ingest - no session");
+      throw { 
+        code: "auth_required", 
+        message: "Editor login required for ingest" 
+      };
     }
 
-    const accessToken = await accessTokenForSession(sessionId);
-    console.log(`Got 3-legged token (length: ${accessToken.length})`);
+    let accessToken: string;
+    try {
+      accessToken = await accessTokenForSession(sessionId);
+      console.log(`Got 3-legged token (length: ${accessToken.length})`);
+    } catch (err) {
+      console.error("Failed to get 3-legged token:", err instanceof Error ? err.message : err);
+      throw { 
+        code: "auth_failed", 
+        message: "Failed to authenticate with Autodesk - please reconnect" 
+      };
+    }
     
     // Verify scopes before proceeding
     const hasScopes = await verifyScopes(accessToken);
     if (!hasScopes) {
-      throw new Error("Missing permissions: data:read viewables:read account:read");
+      throw { 
+        code: "insufficient_scopes", 
+        message: "Missing permissions: data:read viewables:read account:read" 
+      };
     }
 
     const headers = { authorization: `Bearer ${accessToken}` };
@@ -372,6 +387,7 @@ async function ingestAllProjects(triggeredBy: string = 'manual', sessionId?: str
     console.log(`Ingest job ${jobId} completed: ${totalProcessed} projects processed, ${totalErrors} errors`);
     
     return {
+      success: true,
       jobId,
       totalProcessed,
       totalErrors,
@@ -391,7 +407,15 @@ async function ingestAllProjects(triggeredBy: string = 'manual', sessionId?: str
       })
       .eq("id", jobId);
 
-    throw error;
+    const errorObj = error as any;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      code: errorObj?.code || "unknown_error",
+      totalProcessed: 0,
+      totalErrors: 0,
+      totalProjects: 0
+    };
   }
 }
 
@@ -430,23 +454,25 @@ Deno.serve(async (req) => {
     // Start the ingestion process
     const result = await ingestAllProjects(triggeredBy, sessionId);
     
-    return new Response(JSON.stringify({
-      success: true,
-      message: "Projects ingestion completed",
-      ...result
-    }), {
-      status: 200,
+    const status = result.success ? 200 : (result.code === "insufficient_scopes" || result.code === "auth_required" ? 422 : 500);
+    
+    return new Response(JSON.stringify(result), {
+      status,
       headers: { "content-type": "application/json", ...corsHeaders }
     });
 
   } catch (error) {
     console.error("ACC projects sync error:", error);
     
+    const errorObj = error as any;
+    const status = errorObj?.code === "insufficient_scopes" || errorObj?.code === "auth_required" ? 422 : 500;
+    
     return new Response(JSON.stringify({
       success: false,
-      error: String(error)
+      error: error instanceof Error ? error.message : String(error),
+      code: errorObj?.code || "unknown_error"
     }), {
-      status: 500,
+      status,
       headers: { "content-type": "application/json", ...corsHeaders }
     });
   }
